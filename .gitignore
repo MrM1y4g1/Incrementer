@@ -17,3 +17,6 @@
 .DS_Store
 Thumbs.db
 *.tmp
+
+# Local scratch files, such as reference tracks that must never be published
+tmp/
