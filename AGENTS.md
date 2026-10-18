@@ -13,7 +13,9 @@ The full project plan (concept, pacing targets, architecture, roadmap M0–M6, a
 
 - **Godot 4.7.2 stable**, GDScript only. C# can't export to the Web, and the Web build is a first-class target.
 - **Renderer:** Compatibility (`gl_compatibility`), because it's the renderer the Web export runs on.
-- Godot is not installed system-wide. A self-contained copy lives in `.tools/godot/` (git-ignored). The `._sc_` file next to the executable keeps editor settings, caches and `user://` data inside `.tools/godot/editor_data/`. **Don't write outside the repository folder.**
+- Godot is not installed system-wide. A self-contained copy lives in `.tools/godot/` (git-ignored). The `._sc_` file next to the executable keeps editor settings and caches inside `.tools/godot/editor_data/`. **Don't write outside the repository folder.**
+
+**Always pass `--no-save` when running the game from here.** Running the project still uses the normal `user://` folder, `%APPDATA%\Godot\app_userdata\Incrementer`, which is the same folder the exported game uses: without `--no-save` you read and write the repo owner's real save. The tests, the simulator and screenshot captures all pass it.
 
 To set it up on a new machine (Git Bash):
 
