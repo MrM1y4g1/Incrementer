@@ -68,6 +68,8 @@ default_bus_layout.tres  The audio buses (Master, Music, SFX). Define buses here
                    plays through buses that exist at startup.
 docs/              PROGRESS.md (progress log), itch-page.md (store page text), screenshots/
 builds/            Exports, one folder per version (git-ignored)
+tmp/               The repo owner's local scratch, such as style references. Git-ignored, excluded from every export
+                   preset, and given a .gdignore. Nothing in it may ship: it has held a commercial soundtrack.
 ```
 
 `docs/` and `builds/` each hold a `.gdignore`, so Godot never imports the screenshots or exported files and they can't end up in a build.
@@ -117,9 +119,10 @@ Clean-lined sci-fi: thin glowing lines on a deep blue-black background, panels w
 1. Bump `config/version` in `project.godot` and add the version to the top of `CHANGELOG.md`.
 2. Run the tests and the whole-game pacing check with `--check`.
 3. Export Web, Windows and Windows debug into `builds/<version>/` (commands above). If an export can't replace a file, someone is playing that build: export to a new folder instead of closing it.
-4. Zip each folder's contents as `builds/<version>/Incrementer-<version>-web.zip`, `-windows.zip` and `-windows-debug.zip`. The Web zip has `index.html` at its root, which is what itch.io expects.
-5. Tag `v<version>`, push the tag, and create the GitHub release as a **draft** with the three zips and the changelog section. The repo owner publishes it and the itch.io page (`docs/itch-page.md`).
-6. Pushing the tag also runs `.github/workflows/pages.yml`, which tests, exports the Web build in CI and publishes it at https://mrm1y4g1.github.io/Incrementer/. Check that the run succeeds. Only `v*` tags may deploy to the `github-pages` environment, and pushes to `main` never do. To redeploy without a new tag, run the workflow by hand.
+4. Compare `builds/<version>/web/index.pck` with the last release's. A jump of megabytes means Godot packed something it shouldn't: 1.3.0's first export picked up a reference MP3 from `tmp/`. Any file under `res://` ends up in an export unless a preset's exclude filter or a `.gdignore` keeps it out.
+5. Zip each folder's contents as `builds/<version>/Incrementer-<version>-web.zip`, `-windows.zip` and `-windows-debug.zip`. The Web zip has `index.html` at its root, which is what itch.io expects.
+6. Tag `v<version>`, push the tag, and create the GitHub release as a **draft** with the three zips and the changelog section. The repo owner publishes it and the itch.io page (`docs/itch-page.md`).
+7. Pushing the tag also runs `.github/workflows/pages.yml`, which tests, exports the Web build in CI and publishes it at https://mrm1y4g1.github.io/Incrementer/. Check that the run succeeds. Only `v*` tags may deploy to the `github-pages` environment, and pushes to `main` never do. To redeploy without a new tag, run the workflow by hand.
 
 ## Git
 
