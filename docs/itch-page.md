@@ -1,13 +1,13 @@
 # itch.io page
 
-Everything needed to publish Incrementer 1.0.2 on itch.io. Copy the text, upload the files, set the options.
+Everything needed to publish Incrementer 1.0.3 on itch.io. Copy the text, upload the files, set the options.
 
 ## Upload
 
-| File (from `builds/1.0.2/`) | itch.io setting |
+| File (from `builds/1.0.3/`) | itch.io setting |
 |---|---|
-| `Incrementer-1.0.2-web.zip` | Kind: HTML. Tick **"This file will be played in the browser"**. |
-| `Incrementer-1.0.2-windows.zip` | Platform: Windows. |
+| `Incrementer-1.0.3-web.zip` | Kind: HTML. Tick **"This file will be played in the browser"**. |
+| `Incrementer-1.0.3-windows.zip` | Platform: Windows. |
 
 **Embed options:** viewport **1280 × 720**, tick **Fullscreen button**, leave **SharedArrayBuffer support** off (the Web build is single-threaded and doesn't need it). Mobile friendly: no.
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.3 · 18 October 2026
+
+Balance from the second playtest: the game could be finished in under 2 hours.
+
+- **A smaller Carry bonus that ripples in over 40 minutes.** The bonus is now Count per second × (1 + Carry earned)^7, down from ^12.5, and it ripples in over 40 minutes instead of 10. In 1.0.2, a player who Overflowed whenever a run slowed down reached each run at twice the bits of the run before, in about 10 minutes, and finished in under 2 hours. Now each run gets about a third further than the last and lasts about 40 minutes. The fastest strategies tried reach the ending in 6 to 7 hours.
+- The Overflow button shows the next run's Carry bonus, to compare with this run's in the Count panel. The Overflow confirmation suggests Overflowing when a run slows down: waiting for a full register at the widest width is now far slower.
+- Existing saves keep their Carry and Firmware, but the Carry bonus they give is smaller.
+
 ## 1.0.2 · 18 October 2026
 
 - The Count panel keeps its width. Once numbers reached e-notation, the line under Count per second grew too long and the panel kept changing width, pushing the register panel left and right. The Carry details now have their own line, in violet, and any text too long for the panel ends in "…" instead of widening it.
