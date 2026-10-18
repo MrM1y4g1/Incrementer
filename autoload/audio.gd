@@ -2,6 +2,9 @@ extends Node
 ## Plays the sound effects and the music loop, and keeps the Music and SFX buses at the volumes
 ## set in Settings. The sounds are synthesised by tools/make_sounds.gd.
 ## Runs with --mute or --capture, and headless runs, stay silent.
+## The Music and SFX buses are defined in res://default_bus_layout.tres, not created here: in the browser, sounds
+## play through Web Audio, which only knows the buses that exist at startup. Buses added in code left the
+## Web build silent.
 
 const SOUND_NAMES: PackedStringArray = ["click", "buy", "upgrade", "overclock", "widen", "achievement", "overflow", "fault"]
 ## The same sound won't restart faster than this, so rapid purchases don't turn into a buzz.
@@ -21,8 +24,6 @@ func _ready() -> void:
 	for arg: String in OS.get_cmdline_user_args():
 		if arg == "--mute" or arg.begins_with("--capture="):
 			_muted = true
-	_ensure_bus("Music")
-	_ensure_bus("SFX")
 	for sound_name: String in SOUND_NAMES:
 		_sounds[sound_name] = load("res://assets/audio/%s.wav" % sound_name)
 	for i: int in PLAYER_COUNT:
@@ -84,12 +85,3 @@ func _set_bus_volume(bus_name: String, volume: float) -> void:
 	var index := AudioServer.get_bus_index(bus_name)
 	AudioServer.set_bus_mute(index, volume <= 0.001)
 	AudioServer.set_bus_volume_db(index, linear_to_db(maxf(volume, 0.001)))
-
-
-func _ensure_bus(bus_name: String) -> void:
-	if AudioServer.get_bus_index(bus_name) >= 0:
-		return
-	AudioServer.add_bus()
-	var index := AudioServer.bus_count - 1
-	AudioServer.set_bus_name(index, bus_name)
-	AudioServer.set_bus_send(index, &"Master")

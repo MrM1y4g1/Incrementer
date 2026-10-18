@@ -64,6 +64,8 @@ ui/                main.tscn + main.gd (screen built in code), TitleScreen, Sche
 tests/             run_tests.gd (runner), lib/ (TestCase, Fixtures), test_*.gd
 tools/             sim.gd (balance simulator), make_sounds.gd (synthesises assets/audio)
 assets/            fonts/ (OFL fonts and licences), audio/ (generated WAVs)
+default_bus_layout.tres  The audio buses (Master, Music, SFX). Define buses here, never in code: the Web build only
+                   plays through buses that exist at startup.
 docs/              PROGRESS.md (progress log), itch-page.md (store page text), screenshots/
 builds/            Exports, one folder per version (git-ignored)
 ```
