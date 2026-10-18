@@ -2,6 +2,43 @@
 
 Newest first. Screenshots are captured from the real game at 1280 × 720. The `--autoplay` flag fast-forwards a scripted player, so the later shots show a run in progress.
 
+## 18 Oct 2026 · 1.0.3: six hours again
+
+**What you found:** you reached the ending in under 2 hours, against a target of about 6. The simulator's scripted player only Overflowed once its register was full at the widest width its Firmware allowed, and on that schedule the game took 6 h 23 min. Real players Overflow when a run slows down. A simulated player who did that finished in **1 h 49 min**, close to your time. Count pays for every layer, so the Carry bonus roughly tripled in effect. Each run reached twice the bits of the run before in about 10 minutes, and the Wide bus prices never held anyone back.
+
+**The fix** changes two numbers:
+
+- **Carry bonus:** (1 + Carry earned)^7, down from ^12.5. A run that lets the bonus ripple in now gets about a third further than the last, not twice as far.
+- **Ripple:** 40 minutes, up from 10. A run that makes progress lasts about as long as the ripple, so this sets the pace after the first Overflow.
+
+I tried bonus powers from 6 to 12.5 against ripples from 10 to 50 minutes, each with nine Overflow strategies, and picked the pair where the fastest strategy lands near the plan's 6 h 30. The scripted player now Overflows once the bonus has fully rippled in, if that would at least double its Carry. With `--check`, the simulator also plays five faster strategies to the ending and fails if any takes under 5 hours, so CI catches this from now on.
+
+**Simulated time to the ending, by Overflow strategy:**
+
+| Overflow when… | 1.0.2 | 1.0.3 |
+|---|---|---|
+| the bonus has rippled in and the Carry would double (the new scripted player) | 1 h 49 | 6 h 19 |
+| the register grows less than 1 bit a minute | 2 h 13 | 6 h 56 |
+| the register grows less than 4 bits a minute | 1 h 51 | 8 h 06 |
+| the Carry would grow 16× | 2 h 39 | 10 h 28 |
+| the register is full at the widest width (the old scripted player) | 6 h 23 | over 12 h |
+
+The last row is why the Overflow button now shows the next run's Carry bonus next to this run's, and why the confirmation says to Overflow when a run slows down. The new scripted player reaches 128 bits at 1 h 12, 256 at 2 h 28, 512 at 4 h 13 and 1024 at 5 h 26, against the plan's 1 h 30, 3 h, 4 h 30 and 6 h. It Overflows 9 times, with runs of 27 to 49 minutes.
+
+Your current save keeps its Carry and Firmware, but its Carry bonus is now much smaller. To play the new balance from the start, move the save folder (`%APPDATA%\Godot\app_userdata\Incrementer`) somewhere else first.
+
+**Twenty minutes into the second run:** the bonus is at ×52, heading for ×2.19 K in 19 minutes.
+
+![Twenty minutes into the second run](screenshots/2026-10-18-m6-07-run-two.png)
+
+**Near the end of the second run:** the Overflow button shows the next run's bonus, ×10 M against this run's ×2.19 K, and the confirmation says when to Overflow.
+
+![Overflow confirmation with advice](screenshots/2026-10-18-m6-08-overflow-advice.png)
+
+**Seventh run, 4 h 10 in:** a 256-bit register, with the next run's bonus far ahead of this one's.
+
+![The seventh run](screenshots/2026-10-18-m6-09-run-seven.png)
+
 ## 18 Oct 2026 · 1.0.2: a steady Count panel
 
 **What you found:** once the numbers reached e-notation, the top-right panel kept changing width. The clock line under Count per second was the cause: a Godot label asks for the full width of its text, so whenever that line outgrew the panel, the panel widened and squeezed the register.

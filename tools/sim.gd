@@ -19,6 +19,17 @@ const TARGETS := {
 	"V1 ending": 23400.0,
 }
 
+## Players who Overflow sooner than the AutoPlayer, on top of its own rule. In 1.0.2 the AutoPlayer took
+## 6 h 23 min to the ending, but a player who Overflowed whenever a run slowed down finished in under 2 hours.
+## With --until=ending --check, none of these may reach the ending in under 5 hours.
+##   ripple:<f>  once the run is f ripples old, if the Overflow would at least double the Carry earned
+##   ratio:<r>   whenever the Overflow would pay at least r times the Carry earned
+##   stall:<b>   once the peak grows less than b bits in a minute, if the Overflow would double the Carry
+const FASTER_PLAYERS: Array[String] = ["ripple:0.5", "ripple:0.75", "ratio:16", "stall:1", "stall:3"]
+## The fastest any player may reach the ending, and how long the faster players are followed.
+const ENDING_FLOOR := 5.0 * 3600.0
+const ENDING_CEILING := 8.0 * 3600.0
+
 
 func _init() -> void:
 	var minutes := 90.0
@@ -97,13 +108,56 @@ func _init() -> void:
 		problems.append("a %ds wait for a purchase in the first hour, over 90s" % int(longest_wait))
 	if until == "ending":
 		var ending := float(reached.get("V1 ending", -1.0))
-		if ending < 5.0 * 3600.0 or ending > 8.0 * 3600.0:
+		if ending < ENDING_FLOOR or ending > ENDING_CEILING:
 			problems.append("V1 ending at %s, outside 5–8 hours" % (NumberFormat.duration(ending) if ending > 0.0 else "never"))
+		print("
+faster players (target 5 hours or more to the ending):")
+		for rule: String in FASTER_PLAYERS:
+			var seconds_to_end := _ending_with(content, rule)
+			print("  %-12s %s" % [rule, NumberFormat.duration(seconds_to_end) if seconds_to_end > 0.0 else "over %s" % NumberFormat.duration(ENDING_CEILING)])
+			if seconds_to_end > 0.0 and seconds_to_end < ENDING_FLOOR:
+				problems.append("a player using %s reaches the ending at %s, under 5 hours" % [rule, NumberFormat.duration(seconds_to_end)])
 	for problem: String in problems:
 		printerr("PACING: " + problem)
 	var check := OS.get_cmdline_user_args().has("--check")
 	quit(1 if check and not problems.is_empty() else 0)
 
+
+## Plays to the ending like the AutoPlayer, but also Overflows whenever the rule (see FASTER_PLAYERS) says so.
+## Returns the seconds it took, or -1 if it takes longer than ENDING_CEILING.
+func _ending_with(content: Content, rule: String) -> float:
+	var kind := rule.get_slice(":", 0)
+	var value := rule.get_slice(":", 1).to_float()
+	var state := GameState.new()
+	var overflows := 0
+	# The run's peak in bits, once a second.
+	var peaks := PackedFloat64Array()
+	var seconds := 0.0
+	while seconds < ENDING_CEILING:
+		AutoPlayer.play(state, content, 1.0)
+		seconds += 1.0
+		if state.ended:
+			return seconds
+		if state.overflows != overflows:
+			overflows = state.overflows
+			peaks.clear()
+		var bits := log(maxf(1.0, state.run_peak)) / log(2.0)
+		peaks.append(bits)
+		if state.overflows == 0 or not Economy.can_overflow(state):
+			continue
+		var gain := Economy.overflow_gain(state, content)
+		var go := false
+		match kind:
+			"ripple":
+				go = state.run_time >= value * Formulas.CARRY_RIPPLE_SECONDS and gain >= state.total_carry
+			"ratio":
+				go = gain >= value * state.total_carry
+			"stall":
+				go = peaks.size() > 60 and bits - peaks[peaks.size() - 61] < value and gain >= state.total_carry
+		if go:
+			Economy.overflow(state, content)
+			AutoPlayer.buy_firmware(state, content)
+	return -1.0
 
 ## Changes whenever the player buys, widens, overclocks or buys an upgrade.
 func _purchases(state: GameState) -> int:

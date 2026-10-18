@@ -138,3 +138,25 @@ func test_rates_stay_finite_at_the_end() -> void:
 	s.layer_amount[0] = Formulas.MAX_FLOAT
 	check(is_finite(Economy.count_per_second(s, content)), "Count per second stays finite")
 	check(is_finite(Economy.click_value(s, content)), "a click stays finite")
+
+
+func test_the_autoplayer_overflows_once_the_carry_bonus_has_rippled_in() -> void:
+	var content := Fixtures.content()
+	var bus := FirmwareDef.new()
+	bus.id = &"bus"
+	bus.effect = FirmwareDef.Effect.WIDE_BUS
+	bus.value = 128.0
+	content.firmware = [bus]
+	content.index()
+	var s := GameState.new()
+	s.firmware.append(&"bus")
+	s.effects_dirty = true
+	s.register_bits = 128
+	s.total_carry = 4.0
+	# 2^80 pays 4 Carry and leaves the 128-bit register far from full.
+	Economy.add_count(s, pow(2.0, 80))
+	check(not AutoPlayer.should_overflow(s, content), "not while the bonus is still rippling in")
+	s.run_time = Formulas.CARRY_RIPPLE_SECONDS
+	check(AutoPlayer.should_overflow(s, content), "once it has rippled in and the Overflow doubles the Carry")
+	s.total_carry = 8.0
+	check(not AutoPlayer.should_overflow(s, content), "not when the Overflow wouldn't double the Carry")

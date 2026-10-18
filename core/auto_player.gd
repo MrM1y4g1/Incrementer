@@ -2,8 +2,8 @@ class_name AutoPlayer
 extends RefCounted
 ## A simple scripted player, used for screenshot captures and the balance simulator.
 ## Each step it clicks, widens the register when it can, then spends: upgrades, the clock and layers,
-## highest layer first, while saving up for the next register width. Once the register is full at the
-## widest width its Firmware allows, it Overflows and spends its Carry on Firmware.
+## highest layer first, while saving up for the next register width. It Overflows when the run slows down
+## (see `should_overflow`) and spends its Carry on Firmware.
 
 ## While saving for a wider register, only purchases cheaper than this share of its cost are allowed.
 const SPEND_SHARE_WHILE_SAVING := 0.1
@@ -31,9 +31,15 @@ static func play(state: GameState, content: Content, seconds: float, step: float
 		elapsed += step
 
 
-## Overflow once the register is full and Firmware allows no wider one: this run can't grow any further.
+## Overflow once the Carry bonus has fully rippled in and the Overflow would at least double the Carry
+## earned: after that the run slows down, and a new run gets further. Also Overflow once the register is
+## full and Firmware allows no wider one, because then this run can't grow at all.
 static func should_overflow(state: GameState, content: Content) -> bool:
-	if state.ended or not Economy.can_overflow(state) or not Economy.is_full(state):
+	if state.ended or not Economy.can_overflow(state):
+		return false
+	if state.run_time >= Formulas.CARRY_RIPPLE_SECONDS and Economy.overflow_gain(state, content) >= state.total_carry:
+		return true
+	if not Economy.is_full(state):
 		return false
 	var next := Formulas.next_width(state.register_bits)
 	return next < 0 or next > Economy.max_bits(state, content)

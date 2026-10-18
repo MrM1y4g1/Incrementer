@@ -407,6 +407,7 @@ func _action_button(action: Callable) -> Button:
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.add_theme_font_size_override("font_size", 15)
 	button.clip_text = true
+	button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	button.pressed.connect(action)
 	return button
 
@@ -558,7 +559,10 @@ func _refresh_clock(state: GameState, cap: float) -> void:
 func _refresh_overflow(state: GameState, content: Content) -> void:
 	if Economy.can_overflow(state):
 		_overflow_button.disabled = false
-		_overflow_button.text = "OVERFLOW   +%s CARRY" % NumberFormat.amount(Economy.overflow_gain(state, content))
+		# The next run's full Carry bonus, next to this run's in the Count panel, shows whether it's worth it.
+		var gain := Economy.overflow_gain(state, content)
+		_overflow_button.text = "OVERFLOW   +%s CARRY   ·   NEXT RUN ×%s" % [
+			NumberFormat.amount(gain), NumberFormat.amount(Formulas.carry_bonus(state.total_carry + gain))]
 	elif state.overflows > 0 or state.register_bits >= 64:
 		_overflow_button.disabled = true
 		_overflow_button.text = "Overflow needs a full 64-bit register"
@@ -688,7 +692,7 @@ func _ask_overflow() -> void:
 		return
 	var gain := Economy.overflow_gain(state, Game.content)
 	var total := state.total_carry + gain
-	_confirm_label.text = "You'll earn %s Carry. The Count, every layer, the register, the clock and this run's upgrades reset. Carry, Firmware, achievements and stats stay.\n\nCarry multiplies Count per second: ×%s next run, up from ×%s. The bonus starts at ×1 and ripples in over the first %d minutes of each run, so you climb the widths again, faster each time." % [
+	_confirm_label.text = "You'll earn %s Carry. The Count, every layer, the register, the clock and this run's upgrades reset. Carry, Firmware, achievements and stats stay.\n\nCarry multiplies Count per second: ×%s next run, up from ×%s. The bonus starts at ×1 and ripples in over the first %d minutes of each run, so you climb the widths again, faster each time.\n\nOverflow when a run slows down: the next one gets further." % [
 		NumberFormat.amount(gain), NumberFormat.amount(Formulas.carry_bonus(total)), NumberFormat.amount(Formulas.carry_bonus(state.total_carry)), roundi(Formulas.CARRY_RIPPLE_SECONDS / 60.0)]
 	_open(_confirm_panel)
 

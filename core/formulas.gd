@@ -19,15 +19,17 @@ const CLOCK_STEP := 1.125
 const OVERFLOW_THRESHOLD := 18446744073709551616.0
 ## Carry = 2^((peak bits - CARRY_BASE_BITS) / 16).
 const CARRY_BASE_BITS := 48.0
-## Count per second × (1 + Carry earned)^CARRY_BONUS_POWER. Carry grows exponentially with the bits a run
-## reaches, so this power law adds about 32 bits per doubling of Carry: enough for each run to reach
-## roughly twice the bits of the run before.
-const CARRY_BONUS_POWER := 12.5
+## Count per second × (1 + Carry earned)^CARRY_BONUS_POWER. Carry doubles every 16 bits a run reaches, so
+## the bonus adds 7 bits of Count per second for every 16 bits of peak. Count pays for every layer, which
+## roughly triples that, so a run that lets the bonus ripple in ends about a third wider than the last.
+## At 12.5 (1.0.2) runs reached twice the bits of the run before and the game ended in under 2 hours.
+const CARRY_BONUS_POWER := 7.0
 ## The Carry bonus ripples in: it is ×1 when a run starts and reaches full strength after this many seconds.
 ## A flat bonus made a new run's first Incrementer worth millions per second, and because Count pays for
 ## every layer, any flat bonus snowballs through the old widths in seconds. Time can't snowball, so each
-## run replays the old widths in about this long, then meets the new width at full strength.
-const CARRY_RIPPLE_SECONDS := 600.0
+## run replays the old widths, then meets new ground as the bonus completes. Runs that make progress last
+## about this long, so it sets the pace of everything after the first Overflow.
+const CARRY_RIPPLE_SECONDS := 2400.0
 ## Multipliers stay below this so they never become INF, because INF × 0 would be NaN.
 const MAX_MULTIPLIER := 1e300
 
