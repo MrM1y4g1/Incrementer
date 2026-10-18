@@ -2,6 +2,15 @@
 
 Newest first. Screenshots are captured from the real game at 1280 × 720. The `--autoplay` flag fast-forwards a scripted player, so the later shots show a run in progress.
 
+## 18 Oct 2026 · The game on GitHub Pages
+
+The Web build is live at **https://mrm1y4g1.github.io/Incrementer/**. A new workflow (`.github/workflows/pages.yml`) runs the tests, exports the Web build in CI and deploys it whenever a version is tagged, so the site always has the latest release. It can also be run by hand from the Actions tab. The first deployment is 1.2.0.
+
+- Only `v*` tags (and `main`, for runs started by hand) may deploy, so work in progress never goes live.
+- CI checks Godot's 1.3 GB export templates against their published checksums, keeps only the one template the Web build needs, and caches it.
+- The first visit downloads about 40 MB, mostly the Godot engine compiled to WebAssembly; the browser caches it after that. Saves live in that browser's storage, so **Save data → Copy** is the backup.
+- I couldn't check the page in a browser here, because the Chrome I can drive has no WebGL 2. Please open the link and tell me if it doesn't start.
+
 ## 18 Oct 2026 · 1.2.0: bad bits
 
 **Your idea:** the register's storage slowly goes bad, and a bad bit has to be fixed before the Count can get past it.
