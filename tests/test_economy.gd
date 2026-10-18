@@ -82,7 +82,7 @@ func test_milestone_doubles_output() -> void:
 func test_widen_spends_the_count_and_doubles_the_width() -> void:
 	var s := GameState.new()
 	s.count = 255.0
-	check(Economy.widen(s), "widen should succeed with a full 8-bit register")
+	check(Economy.widen(s, Fixtures.content()), "widen should succeed with a full 8-bit register")
 	check_eq(s.register_bits, 16)
 	check_near(s.count, 63.0, 1e-12)
 
@@ -91,7 +91,7 @@ func test_widening_past_64_bits_needs_firmware() -> void:
 	var s := GameState.new()
 	s.register_bits = 64
 	s.count = Formulas.register_cap(64)
-	check(not Economy.can_widen(s), "128-bit must wait for Firmware")
+	check(not Economy.can_widen(s, Fixtures.content()), "128-bit must wait for Firmware")
 
 
 func test_overclock_spends_and_speeds_everything_up() -> void:

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="FirmwareDef" format=3]
+
+[ext_resource type="Script" path="res://data/defs/firmware_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"carry_lookahead"
+display_name = "Carry lookahead"
+description = "Overflows earn ×2 Carry"
+effect = 4
+value = 2.0
+layer_tier = 0
+cost = 4.0
+requires = PackedStringArray("wide_bus_128")
+column = 1

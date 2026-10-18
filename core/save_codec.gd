@@ -6,8 +6,9 @@ extends RefCounted
 ## Version history:
 ##   1  M1: Count, register, layers, clicks, play time
 ##   2  M2: adds clock level, upgrades, achievements and total Count produced
+##   3  M3: adds the run fields, Carry, Firmware, Overflows, run history, autobuyer switches and the ending
 
-const VERSION := 2
+const VERSION := 3
 
 
 static func encode(state: GameState, saved_at: float) -> String:
@@ -38,6 +39,8 @@ static func migrate(payload: Dictionary, from_version: int) -> Dictionary:
 	while version < VERSION:
 		if version == 1:
 			payload = _v1_to_v2(payload)
+		elif version == 2:
+			payload = _v2_to_v3(payload)
 		version += 1
 	payload["version"] = VERSION
 	return payload
@@ -53,5 +56,23 @@ static func _v1_to_v2(payload: Dictionary) -> Dictionary:
 	state["achievements"] = []
 	# Version 1 didn't track lifetime production; the peak Count is the best lower bound.
 	state["total_produced"] = state.get("peak_count", 0.0)
+	payload["state"] = state
+	return payload
+
+
+static func _v2_to_v3(payload: Dictionary) -> Dictionary:
+	var state_data: Variant = payload.get("state")
+	if typeof(state_data) != TYPE_DICTIONARY:
+		return payload
+	var state: Dictionary = state_data
+	# Before version 3 there was no Overflow, so the whole save was one run.
+	state["run_peak"] = state.get("peak_count", 0.0)
+	state["run_time"] = state.get("play_time", 0.0)
+	state["carry"] = 0.0
+	state["total_carry"] = 0.0
+	state["overflows"] = 0
+	state["firmware"] = []
+	state["runs"] = []
+	state["ended"] = false
 	payload["state"] = state
 	return payload

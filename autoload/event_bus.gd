@@ -16,3 +16,12 @@ signal clock_raised(level: int)
 
 @warning_ignore("unused_signal")
 signal achievement_unlocked(id: StringName)
+
+@warning_ignore("unused_signal")
+signal overflowed(carry: float)
+
+@warning_ignore("unused_signal")
+signal firmware_bought(id: StringName)
+
+@warning_ignore("unused_signal")
+signal game_ended

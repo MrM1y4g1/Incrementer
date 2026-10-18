@@ -7,8 +7,11 @@ var layers: Array[LayerDef] = []
 ## Sorted by cost, cheapest first.
 var upgrades: Array[UpgradeDef] = []
 var achievements: Array[AchievementDef] = []
+## Sorted by column, then cost.
+var firmware: Array[FirmwareDef] = []
 var upgrade_by_id := {}
 var achievement_by_id := {}
+var firmware_by_id := {}
 
 
 ## Loads every definition under `root` (layers/, upgrades/, achievements/).
@@ -23,8 +26,13 @@ static func load_from(root: String) -> Content:
 	for res: Resource in _load_dir(root.path_join("achievements")):
 		if res is AchievementDef:
 			content.achievements.append(res as AchievementDef)
+	for res: Resource in _load_dir(root.path_join("firmware")):
+		if res is FirmwareDef:
+			content.firmware.append(res as FirmwareDef)
 	content.layers.sort_custom(func(a: LayerDef, b: LayerDef) -> bool: return a.tier < b.tier)
 	content.upgrades.sort_custom(func(a: UpgradeDef, b: UpgradeDef) -> bool: return a.cost < b.cost)
+	content.firmware.sort_custom(func(a: FirmwareDef, b: FirmwareDef) -> bool:
+		return a.column < b.column or (a.column == b.column and a.cost < b.cost))
 	content.index()
 	return content
 
@@ -37,6 +45,9 @@ func index() -> void:
 	achievement_by_id.clear()
 	for achievement: AchievementDef in achievements:
 		achievement_by_id[achievement.id] = achievement
+	firmware_by_id.clear()
+	for node: FirmwareDef in firmware:
+		firmware_by_id[node.id] = node
 
 
 ## Returns every problem found. An empty list means the content is consistent.
@@ -76,6 +87,25 @@ func validate() -> PackedStringArray:
 			errors.append("Achievement %s counts layer %d, which doesn't exist" % [achievement.id, achievement.layer_tier])
 		if achievement.display_name == "" or achievement.description == "":
 			errors.append("Achievement %s needs a name and a description" % achievement.id)
+
+	seen.clear()
+	for node: FirmwareDef in firmware:
+		if node.id == &"" or seen.has(node.id):
+			errors.append("Missing or duplicate Firmware id: '%s'" % node.id)
+		seen[node.id] = true
+		for requirement: String in node.requires:
+			var required: FirmwareDef = firmware_by_id.get(StringName(requirement))
+			if required == null:
+				errors.append("Firmware %s requires '%s', which doesn't exist" % [node.id, requirement])
+			elif required.column >= node.column:
+				errors.append("Firmware %s must sit in a later column than its requirement %s" % [node.id, requirement])
+		if node.cost <= 0.0 or not is_finite(node.cost):
+			errors.append("Firmware %s needs a positive, finite cost" % node.id)
+		var bits_effect := node.effect == FirmwareDef.Effect.WIDE_BUS or node.effect == FirmwareDef.Effect.BOOT_WIDTH
+		if bits_effect and not Formulas.REGISTER_WIDTHS.has(int(node.value)):
+			errors.append("Firmware %s sets %d bits, which isn't a register width" % [node.id, int(node.value)])
+		if node.effect == FirmwareDef.Effect.LAYER_MULTIPLIER and not _is_tier(node.layer_tier):
+			errors.append("Firmware %s targets layer %d, which doesn't exist" % [node.id, node.layer_tier])
 	return errors
 
 

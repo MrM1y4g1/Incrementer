@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="FirmwareDef" format=3]
+
+[ext_resource type="Script" path="res://data/defs/firmware_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"scheduler"
+display_name = "Scheduler"
+description = "Buys Incrementers to Threads automatically"
+effect = 6
+value = 1.0
+layer_tier = 0
+cost = 3.0
+requires = PackedStringArray("parallel_cores_1")
+column = 1

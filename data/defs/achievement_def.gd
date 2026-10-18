@@ -11,6 +11,9 @@ enum Condition {
 	UPGRADES,
 	CLOCK_LEVEL,
 	PLAY_TIME,
+	OVERFLOWS,
+	TOTAL_CARRY,
+	ENDED,
 }
 
 @export var id: StringName = &""

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="FirmwareDef" format=3]
+
+[ext_resource type="Script" path="res://data/defs/firmware_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"pipelining"
+display_name = "Pipelining"
+description = "The ×2 milestone comes every 32 units bought, not 40"
+effect = 10
+value = 32.0
+layer_tier = 0
+cost = 24.0
+requires = PackedStringArray("microcode")
+column = 2

@@ -15,6 +15,16 @@ const ACHIEVEMENT_BONUS := 0.01
 const CLOCK_BASE_COST := 1000.0
 const CLOCK_COST_GROWTH := 100.0
 const CLOCK_STEP := 1.125
+## The Count a run must reach before the player can Overflow: a full 64-bit register.
+const OVERFLOW_THRESHOLD := 18446744073709551616.0
+## Carry = 2^((peak bits - CARRY_BASE_BITS) / 16).
+const CARRY_BASE_BITS := 48.0
+## Count per second × (1 + Carry earned)^CARRY_BONUS_POWER. Carry grows exponentially with the bits a run
+## reaches, so this power law adds about 32 bits per doubling of Carry: enough for each run to reach
+## roughly twice the bits of the run before.
+const CARRY_BONUS_POWER := 10.0
+## Multipliers stay below this so they never become INF, because INF × 0 would be NaN.
+const MAX_MULTIPLIER := 1e300
 
 
 ## Price of the next single unit.
@@ -54,6 +64,22 @@ static func widen_cost(bits: int) -> float:
 	return floor(WIDEN_COST_SHARE * (register_cap(bits) + 1.0))
 
 
+## Carry for an Overflow: 2^((bits - CARRY_BASE_BITS) / 16), so 2 for a full 64-bit register,
+## doubling for every 16 bits beyond it.
+## Returns 0 below 2^64, before the multiplier from Firmware.
+static func carry_for_peak(peak: float) -> float:
+	if peak < OVERFLOW_THRESHOLD:
+		return 0.0
+	var bits := log(peak) / log(2.0)
+	# The small nudge keeps a peak of exactly 2^64 from rounding down to 0.
+	return maxf(1.0, floor(pow(2.0, (bits - CARRY_BASE_BITS) / 16.0) + 1e-9))
+
+
+## The Count-per-second bonus from all the Carry ever earned (spending Carry doesn't reduce it).
+static func carry_bonus(total_carry: float) -> float:
+	return minf(MAX_MULTIPLIER, pow(1.0 + maxf(0.0, total_carry), CARRY_BONUS_POWER))
+
+
 ## The narrowest register that can hold `amount`, or -1 if none can.
 static func width_for(amount: float) -> int:
 	for bits: int in REGISTER_WIDTHS:
@@ -79,6 +105,6 @@ static func next_width(bits: int) -> int:
 	return REGISTER_WIDTHS[i + 1]
 
 
-## Output doubles for every MILESTONE_EVERY units bought.
-static func milestone_multiplier(bought: int) -> float:
-	return pow(2.0, floor(float(bought) / MILESTONE_EVERY))
+## Output doubles for every `step` units bought (MILESTONE_EVERY unless Firmware lowers it).
+static func milestone_multiplier(bought: int, step: int = MILESTONE_EVERY) -> float:
+	return pow(2.0, floor(float(bought) / maxi(1, step)))

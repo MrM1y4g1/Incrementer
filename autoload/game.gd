@@ -5,7 +5,7 @@ extends Node
 const TICK := 0.05
 ## Longer gaps, such as a minimised window or a background browser tab, are caught up in one go.
 const MAX_LIVE_GAP := 1.0
-const ACHIEVEMENT_CHECK_SECONDS := 0.25
+const CHECK_SECONDS := 0.25
 
 var state: GameState = GameState.new()
 var content: Content
@@ -13,7 +13,7 @@ var content: Content
 var speed := 1.0
 
 var _accumulator := 0.0
-var _achievement_timer := 0.0
+var _check_timer := 0.0
 
 
 func _ready() -> void:
@@ -25,17 +25,20 @@ func _process(delta: float) -> void:
 	_accumulator += dt
 	if _accumulator > MAX_LIVE_GAP:
 		Economy.catch_up(state, content, _accumulator)
-		state.play_time += _accumulator
+		Economy.add_time(state, _accumulator)
 		_accumulator = 0.0
 	while _accumulator >= TICK:
 		_accumulator -= TICK
+		Economy.run_autobuyers(state, content)
 		Economy.advance(state, content, TICK)
-		state.play_time += TICK
+		Economy.add_time(state, TICK)
 
-	_achievement_timer += delta
-	if _achievement_timer >= ACHIEVEMENT_CHECK_SECONDS:
-		_achievement_timer = 0.0
+	_check_timer += delta
+	if _check_timer >= CHECK_SECONDS:
+		_check_timer = 0.0
 		check_achievements()
+		if Economy.check_ending(state):
+			EventBus.game_ended.emit()
 
 
 func click() -> void:
@@ -65,10 +68,30 @@ func overclock() -> bool:
 
 
 func widen() -> bool:
-	if not Economy.widen(state):
+	if not Economy.widen(state, content):
 		return false
 	EventBus.register_widened.emit(state.register_bits)
 	return true
+
+
+func overflow() -> float:
+	var gain := Economy.overflow(state, content)
+	if gain > 0.0:
+		EventBus.overflowed.emit(gain)
+		check_achievements()
+	return gain
+
+
+func buy_firmware(id: StringName) -> bool:
+	var node: FirmwareDef = content.firmware_by_id.get(id)
+	if node == null or not Economy.buy_firmware(state, content, node):
+		return false
+	EventBus.firmware_bought.emit(id)
+	return true
+
+
+func set_autobuy(switch: String, on: bool) -> void:
+	state.autobuy[switch] = on
 
 
 func check_achievements() -> void:

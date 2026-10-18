@@ -2,7 +2,8 @@ class_name AutoPlayer
 extends RefCounted
 ## A simple scripted player, used for screenshot captures and the balance simulator.
 ## Each step it clicks, widens the register when it can, then spends: upgrades, the clock and layers,
-## highest layer first, while saving up for the next register width.
+## highest layer first, while saving up for the next register width. Once the register is full at the
+## widest width its Firmware allows, it Overflows and spends its Carry on Firmware.
 
 ## While saving for a wider register, only purchases cheaper than this share of its cost are allowed.
 const SPEND_SHARE_WHILE_SAVING := 0.1
@@ -16,19 +17,50 @@ static func play(state: GameState, content: Content, seconds: float, step: float
 		while clicks >= 1.0:
 			Economy.click(state, content)
 			clicks -= 1.0
-		if Economy.can_widen(state):
-			Economy.widen(state)
+		while Economy.can_widen(state, content):
+			Economy.widen(state, content)
 		_spend(state, content)
+		Economy.run_autobuyers(state, content)
 		Economy.advance(state, content, step)
-		state.play_time += step
+		Economy.add_time(state, step)
 		Achievements.check(state, content)
+		Economy.check_ending(state)
+		if should_overflow(state, content):
+			Economy.overflow(state, content)
+			buy_firmware(state, content)
 		elapsed += step
+
+
+## Overflow once the register is full and Firmware allows no wider one: this run can't grow any further.
+static func should_overflow(state: GameState, content: Content) -> bool:
+	if state.ended or not Economy.can_overflow(state) or not Economy.is_full(state):
+		return false
+	var next := Formulas.next_width(state.register_bits)
+	return next < 0 or next > Economy.max_bits(state, content)
+
+
+## Buys Wide bus nodes first (they open the next register width), then nodes that speed up the ×2
+## milestones, then the cheapest node it can afford.
+static func buy_firmware(state: GameState, content: Content) -> void:
+	var priorities: Array = [FirmwareDef.Effect.WIDE_BUS, FirmwareDef.Effect.MILESTONE_STEP, -1]
+	var bought := true
+	while bought:
+		bought = false
+		for priority: int in priorities:
+			for node: FirmwareDef in content.firmware:
+				if priority >= 0 and node.effect != priority:
+					continue
+				if Economy.buy_firmware(state, content, node):
+					bought = true
+					break
+			if bought:
+				break
 
 
 static func _spend(state: GameState, content: Content) -> void:
 	var limit := INF
 	var next := Formulas.next_width(state.register_bits)
-	if next > 0 and next <= Economy.MAX_BITS_WITHOUT_FIRMWARE:
+	if next > 0 and next <= Economy.max_bits(state, content):
 		limit = Economy.widen_cost(state) * SPEND_SHARE_WHILE_SAVING
 
 	for upgrade: UpgradeDef in content.upgrades:

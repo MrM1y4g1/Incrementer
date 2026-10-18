@@ -23,6 +23,12 @@ static func is_met(state: GameState, achievement: AchievementDef) -> bool:
 			return state.clock_level >= int(achievement.threshold)
 		AchievementDef.Condition.PLAY_TIME:
 			return state.play_time >= achievement.threshold
+		AchievementDef.Condition.OVERFLOWS:
+			return state.overflows >= int(achievement.threshold)
+		AchievementDef.Condition.TOTAL_CARRY:
+			return state.total_carry >= achievement.threshold
+		AchievementDef.Condition.ENDED:
+			return state.ended
 	return false
 
 

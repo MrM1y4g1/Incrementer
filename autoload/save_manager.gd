@@ -69,9 +69,29 @@ func load_game() -> void:
 		return
 	var state: GameState = loaded["state"]
 	var elapsed := Time.get_unix_time_from_system() - float(loaded["saved_at"])
-	offline_seconds = clampf(elapsed, 0.0, Economy.OFFLINE_CAP_SECONDS)
+	Economy.refresh_effects(state, ContentDB.content)
+	offline_seconds = clampf(elapsed, 0.0, state.offline_cap_seconds)
 	offline_gain = Economy.catch_up(state, ContentDB.content, elapsed)
 	Game.replace_state(state)
+
+
+## The current game as one line of text the player can copy somewhere safe.
+func export_text() -> String:
+	return Marshalls.utf8_to_base64(SaveCodec.encode(Game.state, Time.get_unix_time_from_system()))
+
+
+## Loads a game from exported text. Returns "" on success, or why the text couldn't be used.
+func import_text(text: String) -> String:
+	var cleaned := text.strip_edges()
+	if cleaned == "":
+		return "Paste an exported save first."
+	var loaded := SaveCodec.decode(Marshalls.base64_to_utf8(cleaned))
+	if loaded.is_empty():
+		return "That text isn't a save from this game. Check that you copied all of it."
+	Game.replace_state(loaded["state"])
+	if enabled:
+		save_game()
+	return ""
 
 
 ## Deletes the save and its backup and starts a new game. Used by the debug panel.

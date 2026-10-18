@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="FirmwareDef" format=3]
+
+[ext_resource type="Script" path="res://data/defs/firmware_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"parallel_cores_3"
+display_name = "Parallel cores III"
+description = "Count per second ×16"
+effect = 2
+value = 16.0
+layer_tier = 0
+cost = 400.0
+requires = PackedStringArray("parallel_cores_2")
+column = 3

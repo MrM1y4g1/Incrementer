@@ -15,6 +15,16 @@ func test_real_content_has_everything_the_plan_lists() -> void:
 	check_eq(content.layers.size(), GameState.LAYER_COUNT)
 	check(content.upgrades.size() >= 40, "about 40 upgrades, found %d" % content.upgrades.size())
 	check(content.achievements.size() >= 30, "about 30 achievements, found %d" % content.achievements.size())
+	check(content.firmware.size() >= 20, "about 20 Firmware nodes, found %d" % content.firmware.size())
+
+
+func test_every_register_width_has_a_wide_bus() -> void:
+	var widths := {}
+	for node: FirmwareDef in _real().firmware:
+		if node.effect == FirmwareDef.Effect.WIDE_BUS:
+			widths[int(node.value)] = true
+	for bits: int in [128, 256, 512, 1024]:
+		check(widths.has(bits), "no Wide bus for %d bits" % bits)
 
 
 func test_layers_get_steadily_more_expensive() -> void:

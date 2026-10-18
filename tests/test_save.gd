@@ -16,6 +16,62 @@ const V1_SAVE := """{
 }"""
 
 
+## A version 2 save, as M2 wrote it: a full 64-bit register, so it can Overflow straight away.
+const V2_SAVE := """{
+	"saved_at": 1760780000.0,
+	"state": {
+		"achievements": ["kilocount"],
+		"clock_level": 6,
+		"count": 1.8446744073709552e19,
+		"layer_amount": [1.0e15, 2.0e10, 3.0e6, 4000.0, 50.0, 6.0, 0.0, 0.0],
+		"layer_bought": [200, 150, 120, 90, 60, 30, 0, 0],
+		"peak_count": 1.8446744073709552e19,
+		"play_time": 3000.0,
+		"register_bits": 64,
+		"total_clicks": 12000,
+		"total_produced": 4.0e19,
+		"upgrades": ["incrementer_10"]
+	},
+	"version": 2
+}"""
+
+
+func test_version_2_saves_still_load() -> void:
+	var loaded := SaveCodec.decode(V2_SAVE)
+	check(not loaded.is_empty(), "a version 2 save must decode")
+	var s: GameState = loaded["state"]
+	check_eq(s.register_bits, 64)
+	check_eq(s.clock_level, 6)
+	check_eq(s.run_time, 3000.0, "the whole old save counts as one run")
+	check(Economy.can_overflow(s), "a full 64-bit register from M2 can Overflow")
+	check_eq(s.carry, 0.0)
+	check_eq(s.firmware.size(), 0)
+
+
+func test_run_fields_survive_a_round_trip() -> void:
+	var s := GameState.new()
+	s.carry = 12.0
+	s.total_carry = 40.0
+	s.overflows = 3
+	s.run_time = 77.5
+	s.firmware.append(&"wide_bus_128")
+	s.runs.append({"time": 3000.0, "bits": 64.0, "carry": 1.0})
+	s.autobuy["clock"] = false
+	s.ended = true
+	s.ended_time = 23400.0
+	var t: GameState = SaveCodec.decode(SaveCodec.encode(s, 1.0))["state"]
+	check_eq(t.carry, 12.0)
+	check_eq(t.total_carry, 40.0)
+	check_eq(t.overflows, 3)
+	check_eq(t.run_time, 77.5)
+	check_eq(t.firmware, s.firmware)
+	check_eq(t.runs.size(), 1)
+	check_eq(float(t.runs[0]["carry"]), 1.0)
+	check_eq(t.autobuy["clock"], false)
+	check(t.ended, "the ending is remembered")
+	check_eq(t.ended_time, 23400.0)
+
+
 func test_round_trip_keeps_every_field() -> void:
 	var s := GameState.new()
 	s.register_bits = 64

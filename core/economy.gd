@@ -6,9 +6,11 @@ extends RefCounted
 enum BuyMode { ONE = 1, TEN = 10, MAX = -1 }
 
 const CLICK_VALUE := 1.0
-## Registers wider than this need a Wide bus Firmware node (milestone M3).
-const MAX_BITS_WITHOUT_FIRMWARE := 64
-const OFFLINE_CAP_SECONDS := 8.0 * 3600.0
+## Without a Wide bus Firmware node the register stops at this width.
+const BASE_MAX_BITS := 64
+const BASE_OFFLINE_HOURS := 8.0
+## Autobuyers only buy units costing at most this share of the Count, so the player can still save up.
+const AUTOBUY_SPEND_SHARE := 0.1
 
 
 # --- Production -----------------------------------------------------------------
@@ -21,26 +23,35 @@ static func advance(state: GameState, content: Content, seconds: float) -> void:
 	var start := state.layer_amount.duplicate()
 	var layer_count := mini(content.layers.size(), GameState.LAYER_COUNT)
 	for i: int in range(layer_count - 1, 0, -1):
-		state.layer_amount[i - 1] += start[i] * layer_rate(state, content, i) * seconds
+		state.layer_amount[i - 1] = minf(Formulas.MAX_FLOAT, state.layer_amount[i - 1] + start[i] * layer_rate(state, content, i) * seconds)
 	if layer_count > 0:
 		add_count(state, start[0] * layer_rate(state, content, 0) * seconds)
 
 
-## Runs `seconds` of production in fixed steps, capped at the offline limit. Returns the Count gained.
+## Runs `seconds` of production in fixed steps, with autobuyers, up to the offline cap.
+## Returns the Count gained.
 static func catch_up(state: GameState, content: Content, seconds: float, step: float = 1.0) -> float:
-	var remaining := clampf(seconds, 0.0, OFFLINE_CAP_SECONDS)
+	refresh_effects(state, content)
+	var remaining := clampf(seconds, 0.0, state.offline_cap_seconds)
 	var before := state.count
 	while remaining > 0.0:
 		var dt := minf(step, remaining)
+		run_autobuyers(state, content)
 		advance(state, content, dt)
 		remaining -= dt
 	return state.count - before
 
 
+## Time the player spends in the game. Offline catch-up doesn't count.
+static func add_time(state: GameState, seconds: float) -> void:
+	state.play_time += seconds
+	state.run_time += seconds
+
+
 ## Units of the layer below (or Count, for layer 1) that one owned unit makes per second.
 static func layer_rate(state: GameState, content: Content, index: int) -> float:
 	refresh_effects(state, content)
-	return content.layers[index].base_rate * Formulas.milestone_multiplier(state.layer_bought[index]) * state.layer_multiplier[index]
+	return content.layers[index].base_rate * Formulas.milestone_multiplier(state.layer_bought[index], state.milestone_step) * state.layer_multiplier[index]
 
 
 static func count_per_second(state: GameState, content: Content) -> float:
@@ -55,43 +66,85 @@ static func add_count(state: GameState, amount: float) -> float:
 	state.count = minf(Formulas.register_cap(state.register_bits), state.count + amount)
 	var added := maxf(0.0, state.count - before)
 	state.total_produced += added
+	state.run_peak = maxf(state.run_peak, state.count)
 	state.peak_count = maxf(state.peak_count, state.count)
 	return added
 
 
-## Rebuilds the multipliers from upgrades, achievements and the clock, if anything changed.
-## Global boosts (the clock, achievements, ALL_MULTIPLIER upgrades) multiply layer 1 only, which is
-## the Count per second. Applied to every layer they would compound down the chain, so "×2" would
-## really mean about ×2 to the power of the number of active layers.
+## Rebuilds every derived value from upgrades, Firmware, achievements and the clock, if anything changed.
+## Global boosts (the clock, achievements, Count multipliers) multiply layer 1 only, which is the Count
+## per second. Applied to every layer they would compound down the chain, so "×2" would really mean
+## about ×2 to the power of the number of active layers.
 static func refresh_effects(state: GameState, content: Content) -> void:
 	if not state.effects_dirty:
 		return
 	var multipliers := PackedFloat64Array()
 	multipliers.resize(GameState.LAYER_COUNT)
 	multipliers.fill(1.0)
-	var all := Formulas.clock_multiplier(state.clock_level) * (1.0 + Formulas.ACHIEVEMENT_BONUS * state.achievements.size())
+	var count_multiplier := Formulas.clock_multiplier(state.clock_level) * (1.0 + Formulas.ACHIEVEMENT_BONUS * state.achievements.size())
 	var click_multiplier := 1.0
 	var click_share := 0.0
+
 	for id: StringName in state.upgrades:
 		var upgrade: UpgradeDef = content.upgrade_by_id.get(id)
 		if upgrade == null:
 			continue
 		match upgrade.effect:
 			UpgradeDef.Effect.LAYER_MULTIPLIER:
-				var i := upgrade.layer_tier - 1
-				if i >= 0 and i < GameState.LAYER_COUNT:
-					multipliers[i] *= upgrade.value
+				_multiply(multipliers, upgrade.layer_tier, upgrade.value)
 			UpgradeDef.Effect.ALL_MULTIPLIER:
-				all *= upgrade.value
+				count_multiplier *= upgrade.value
 			UpgradeDef.Effect.CLICK_MULTIPLIER:
 				click_multiplier *= upgrade.value
 			UpgradeDef.Effect.CLICK_FROM_RATE:
 				click_share += upgrade.value
-	multipliers[0] *= all
+
+	var max_bits := BASE_MAX_BITS
+	var boot_bits := 8
+	var carry_multiplier := 1.0
+	var offline_hours := BASE_OFFLINE_HOURS
+	var milestone_step := Formulas.MILESTONE_EVERY
+	var effects := {}
+	for id: StringName in state.firmware:
+		var node: FirmwareDef = content.firmware_by_id.get(id)
+		if node == null:
+			continue
+		effects[node.effect] = true
+		match node.effect:
+			FirmwareDef.Effect.WIDE_BUS:
+				max_bits = maxi(max_bits, int(node.value))
+			FirmwareDef.Effect.BOOT_WIDTH:
+				boot_bits = maxi(boot_bits, int(node.value))
+			FirmwareDef.Effect.COUNT_MULTIPLIER:
+				count_multiplier *= node.value
+			FirmwareDef.Effect.LAYER_MULTIPLIER:
+				_multiply(multipliers, node.layer_tier, node.value)
+			FirmwareDef.Effect.CARRY_MULTIPLIER:
+				carry_multiplier *= node.value
+			FirmwareDef.Effect.OFFLINE_HOURS:
+				offline_hours = maxf(offline_hours, node.value)
+			FirmwareDef.Effect.MILESTONE_STEP:
+				milestone_step = mini(milestone_step, int(node.value))
+
+	multipliers[0] *= count_multiplier * Formulas.carry_bonus(state.total_carry)
+	for i: int in GameState.LAYER_COUNT:
+		multipliers[i] = minf(multipliers[i], Formulas.MAX_MULTIPLIER)
 	state.layer_multiplier = multipliers
 	state.click_multiplier = click_multiplier
 	state.click_rate_share = click_share
+	state.max_bits = max_bits
+	state.boot_bits = mini(boot_bits, max_bits)
+	state.carry_multiplier = carry_multiplier
+	state.offline_cap_seconds = offline_hours * 3600.0
+	state.milestone_step = milestone_step
+	state.firmware_effects = effects
 	state.effects_dirty = false
+
+
+static func _multiply(multipliers: PackedFloat64Array, tier: int, value: float) -> void:
+	var i := tier - 1
+	if i >= 0 and i < GameState.LAYER_COUNT:
+		multipliers[i] *= value
 
 
 # --- Clicking -------------------------------------------------------------------
@@ -146,7 +199,7 @@ static func buy(state: GameState, content: Content, index: int, mode: int) -> in
 
 # --- Upgrades -------------------------------------------------------------------
 
-## True when the upgrade's requirements are met and it hasn't been bought yet.
+## True when the upgrade's requirements are met and it hasn't been bought this run.
 static func upgrade_visible(state: GameState, upgrade: UpgradeDef) -> bool:
 	if state.upgrades.has(upgrade.id) or state.register_bits < upgrade.requires_bits:
 		return false
@@ -166,14 +219,6 @@ static func buy_upgrade(state: GameState, upgrade: UpgradeDef) -> bool:
 	state.upgrades.append(upgrade.id)
 	state.effects_dirty = true
 	return true
-
-
-static func visible_upgrades(state: GameState, content: Content) -> Array[UpgradeDef]:
-	var result: Array[UpgradeDef] = []
-	for upgrade: UpgradeDef in content.upgrades:
-		if upgrade_visible(state, upgrade):
-			result.append(upgrade)
-	return result
 
 
 # --- Clock ----------------------------------------------------------------------
@@ -205,15 +250,137 @@ static func widen_cost(state: GameState) -> float:
 	return Formulas.widen_cost(state.register_bits)
 
 
-## True when the next width exists, needs no Firmware yet, and the Count covers the cost.
-static func can_widen(state: GameState) -> bool:
+## The widest register the player's Firmware allows.
+static func max_bits(state: GameState, content: Content) -> int:
+	refresh_effects(state, content)
+	return state.max_bits
+
+
+## True when the next width exists, Firmware allows it, and the Count covers the cost.
+static func can_widen(state: GameState, content: Content) -> bool:
 	var next := Formulas.next_width(state.register_bits)
-	return next > 0 and next <= MAX_BITS_WITHOUT_FIRMWARE and state.count >= widen_cost(state)
+	return next > 0 and next <= max_bits(state, content) and state.count >= widen_cost(state)
 
 
-static func widen(state: GameState) -> bool:
-	if not can_widen(state):
+static func widen(state: GameState, content: Content) -> bool:
+	if not can_widen(state, content):
 		return false
 	state.count -= widen_cost(state)
 	state.register_bits = Formulas.next_width(state.register_bits)
+	return true
+
+
+# --- Overflow -------------------------------------------------------------------
+
+static func can_overflow(state: GameState) -> bool:
+	return state.run_peak >= Formulas.OVERFLOW_THRESHOLD
+
+
+## Carry an Overflow would pay right now.
+static func overflow_gain(state: GameState, content: Content) -> float:
+	refresh_effects(state, content)
+	return floor(Formulas.carry_for_peak(state.run_peak) * state.carry_multiplier)
+
+
+## Ends the run: pays Carry, records the run, and resets the Count, layers, register, clock and upgrades.
+## Firmware, achievements, stats and Carry stay. Returns the Carry earned, or 0 if not allowed yet.
+static func overflow(state: GameState, content: Content) -> float:
+	if not can_overflow(state):
+		return 0.0
+	var gain := overflow_gain(state, content)
+	state.carry += gain
+	state.total_carry += gain
+	state.overflows += 1
+	state.runs.append({"time": state.run_time, "bits": log(state.run_peak) / log(2.0), "carry": gain})
+	while state.runs.size() > GameState.RUN_HISTORY_LIMIT:
+		state.runs.pop_front()
+
+	state.count = 0.0
+	state.run_peak = 0.0
+	state.run_time = 0.0
+	state.clock_level = 0
+	# Packed arrays are copied on read, so assign fresh ones rather than filling in place.
+	var fresh := GameState.new()
+	state.layer_amount = fresh.layer_amount
+	state.layer_bought = fresh.layer_bought
+	state.upgrades.clear()
+	state.effects_dirty = true
+	refresh_effects(state, content)
+	state.register_bits = state.boot_bits
+	return gain
+
+
+# --- Firmware -------------------------------------------------------------------
+
+static func owns_firmware(state: GameState, id: StringName) -> bool:
+	return state.firmware.has(id)
+
+
+## True when every prerequisite is owned.
+static func firmware_available(state: GameState, node: FirmwareDef) -> bool:
+	for requirement: String in node.requires:
+		if not state.firmware.has(StringName(requirement)):
+			return false
+	return true
+
+
+static func can_buy_firmware(state: GameState, node: FirmwareDef) -> bool:
+	return not owns_firmware(state, node.id) and firmware_available(state, node) and state.carry >= node.cost
+
+
+static func buy_firmware(state: GameState, content: Content, node: FirmwareDef) -> bool:
+	if not can_buy_firmware(state, node):
+		return false
+	state.carry -= node.cost
+	state.firmware.append(node.id)
+	state.effects_dirty = true
+	refresh_effects(state, content)
+	# A Boot ROM takes effect immediately if the register is narrower than it.
+	if state.register_bits < state.boot_bits:
+		state.register_bits = state.boot_bits
+	return true
+
+
+# --- Automation -----------------------------------------------------------------
+
+## True when Firmware has unlocked this autobuyer and the player hasn't switched it off.
+static func autobuyer_active(state: GameState, content: Content, effect: FirmwareDef.Effect, switch: String) -> bool:
+	refresh_effects(state, content)
+	return state.has_firmware_effect(effect) and bool(state.autobuy.get(switch, true))
+
+
+## Runs every active autobuyer once. Layer autobuyers only buy units that cost at most
+## AUTOBUY_SPEND_SHARE of the Count, so saving for a wider register still works.
+static func run_autobuyers(state: GameState, content: Content) -> void:
+	if autobuyer_active(state, content, FirmwareDef.Effect.AUTO_WIDEN, "widen"):
+		while can_widen(state, content):
+			widen(state, content)
+	if autobuyer_active(state, content, FirmwareDef.Effect.AUTO_CLOCK, "clock"):
+		while clock_cost(state) <= state.count * AUTOBUY_SPEND_SHARE and can_overclock(state):
+			overclock(state)
+	var low := autobuyer_active(state, content, FirmwareDef.Effect.AUTOBUY_LOW, "low")
+	var high := autobuyer_active(state, content, FirmwareDef.Effect.AUTOBUY_HIGH, "high")
+	if not low and not high:
+		return
+	for index: int in range(content.layers.size() - 1, -1, -1):
+		if (index < 4 and not low) or (index >= 4 and not high):
+			continue
+		var layer := content.layers[index]
+		if not is_unlocked(state, layer):
+			continue
+		var n := Formulas.max_affordable(layer.base_cost, layer.cost_growth, state.layer_bought[index], state.count * AUTOBUY_SPEND_SHARE)
+		if n > 0:
+			state.count = maxf(0.0, state.count - cost_of(state, content, index, n))
+			state.layer_bought[index] += n
+			state.layer_amount[index] += n
+
+
+# --- The ending -----------------------------------------------------------------
+
+## Marks the V1 ending once the 1024-bit register is full. Returns true the moment it happens.
+static func check_ending(state: GameState) -> bool:
+	if state.ended or state.register_bits < 1024 or not is_full(state):
+		return false
+	state.ended = true
+	state.ended_time = state.play_time
 	return true
