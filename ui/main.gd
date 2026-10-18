@@ -465,8 +465,14 @@ func _refresh() -> void:
 	var boosts := "Clock %s Hz  ·  %d achievements, +%d%%" % [
 		NumberFormat.rate(Formulas.clock_multiplier(state.clock_level)), state.achievements.size(),
 		roundi(state.achievements.size() * Formulas.ACHIEVEMENT_BONUS * 100.0)]
+	# Name the Carry bonus, and while it ripples in, say where it's heading and when it gets there.
 	if state.total_carry > 0.0:
-		boosts += "  ·  Carry %s" % NumberFormat.amount(state.carry)
+		boosts += "  ·  Carry bonus ×%s" % NumberFormat.amount(Economy.carry_bonus_now(state))
+		var ripple_left := Formulas.CARRY_RIPPLE_SECONDS - state.run_time
+		if ripple_left > 0.0:
+			boosts += ", ×%s in %s" % [NumberFormat.amount(Formulas.carry_bonus(state.total_carry)), NumberFormat.duration(ripple_left)]
+	if state.carry >= 1.0:
+		boosts += "  ·  %s Carry to spend" % NumberFormat.amount(state.carry)
 	_boost_label.text = boosts
 
 	_register.show_value(state.register_bits, state.count, full)
@@ -632,7 +638,9 @@ func _on_overflowed(carry: float) -> void:
 	_register.flash(Color(1, 1, 1, 0.9))
 	_fx.flash(Color(1, 1, 1, 0.75), 0.9)
 	_fx.shockwave(_schematic.get_global_rect().get_center(), Palette.MAGENTA)
-	_toast(&"OverflowToast", "OVERFLOW", Palette.MAGENTA, "+%s Carry" % NumberFormat.amount(carry), "Spend it on Firmware. It stays through every Overflow.")
+	var total := Game.state.total_carry
+	_toast(&"OverflowToast", "OVERFLOW", Palette.MAGENTA, "+%s Carry" % NumberFormat.amount(carry), "Carry bonus ×%s, rippling in over %d minutes. Spend Carry on Firmware." % [
+		NumberFormat.amount(Formulas.carry_bonus(total)), roundi(Formulas.CARRY_RIPPLE_SECONDS / 60.0)])
 
 
 func _on_widened(_bits: int) -> void:
@@ -669,7 +677,10 @@ func _ask_overflow() -> void:
 	var state := Game.state
 	if not Economy.can_overflow(state):
 		return
-	_confirm_label.text = "You'll earn %s Carry. The Count, every layer, the register, the clock and this run's upgrades reset. Carry, Firmware, achievements and stats stay." % NumberFormat.amount(Economy.overflow_gain(state, Game.content))
+	var gain := Economy.overflow_gain(state, Game.content)
+	var total := state.total_carry + gain
+	_confirm_label.text = "You'll earn %s Carry. The Count, every layer, the register, the clock and this run's upgrades reset. Carry, Firmware, achievements and stats stay.\n\nCarry multiplies Count per second: ×%s next run, up from ×%s. The bonus starts at ×1 and ripples in over the first %d minutes of each run, so you climb the widths again, faster each time." % [
+		NumberFormat.amount(gain), NumberFormat.amount(Formulas.carry_bonus(total)), NumberFormat.amount(Formulas.carry_bonus(state.total_carry)), roundi(Formulas.CARRY_RIPPLE_SECONDS / 60.0)]
 	_open(_confirm_panel)
 
 
