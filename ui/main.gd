@@ -16,6 +16,9 @@ extends Control
 
 const REFRESH_SECONDS := 0.1
 const SIDE_WIDTH := 470.0
+## The screen is laid out for this size and drawn at exactly this size, centred in the window. It only
+## shrinks, to fit a smaller window, so it looks the same as the screenshots on any monitor.
+const SCREEN_SIZE := Vector2(1280, 720)
 const TOAST_SECONDS := 4.0
 
 var _mode: int = Economy.BuyMode.ONE
@@ -71,6 +74,8 @@ var _start_over_status: Label
 
 func _ready() -> void:
 	theme = ThemeFactory.build()
+	_place_screen()
+	get_tree().root.size_changed.connect(_place_screen)
 	_build()
 	EventBus.achievement_unlocked.connect(_on_achievement)
 	EventBus.overflowed.connect(_on_overflowed)
@@ -96,6 +101,17 @@ func _ready() -> void:
 		_show_title()
 	if _capture_path != "":
 		_capture.call_deferred()
+
+
+## Centres the screen at its own size, and shrinks everything only when the window is too small to hold it.
+func _place_screen() -> void:
+	var window := get_window()
+	window.content_scale_factor = minf(1.0, minf(window.size.x / SCREEN_SIZE.x, window.size.y / SCREEN_SIZE.y))
+	set_anchors_preset(Control.PRESET_CENTER)
+	offset_left = -SCREEN_SIZE.x / 2.0
+	offset_top = -SCREEN_SIZE.y / 2.0
+	offset_right = SCREEN_SIZE.x / 2.0
+	offset_bottom = SCREEN_SIZE.y / 2.0
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -411,7 +427,7 @@ func _build_overlays() -> void:
 	start_box.add_child(start_title)
 	var start_text := _label("This erases your whole game: the Count, Carry, Firmware, achievements, stats and run history. Settings stay.
 
-To keep a copy, press Copy save and paste it somewhere safe. Save data → Import loads it again.", 17, Palette.ICE)
+To keep a copy, press Copy save and paste it somewhere safe. Import, in Save data, loads it again.", 17, Palette.ICE)
 	start_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	start_box.add_child(start_text)
 	_start_over_status = _label("", 13, Palette.MUTED)
@@ -623,7 +639,7 @@ func _refresh_widen(state: GameState, content: Content) -> void:
 		_widen_button.text = "%d-bit needs %s" % [next, _wide_bus_name(next, content)]
 		_widen_button.disabled = true
 	else:
-		_widen_button.text = "WIDEN → %d-BIT   %s" % [next, NumberFormat.amount(Economy.widen_cost(state))]
+		_widen_button.text = "WIDEN TO %d-BIT   %s" % [next, NumberFormat.amount(Economy.widen_cost(state))]
 		_widen_button.disabled = not Economy.can_widen(state, content)
 
 
@@ -633,7 +649,7 @@ func _refresh_clock(state: GameState, cap: float) -> void:
 		_clock_button.text = "OVERCLOCK   needs %d-bit" % Formulas.width_for(clock_cost)
 		_clock_button.disabled = true
 		return
-	_clock_button.text = "OVERCLOCK → %s Hz   %s" % [
+	_clock_button.text = "OVERCLOCK TO %s Hz   %s" % [
 		NumberFormat.rate(Formulas.clock_multiplier(state.clock_level + 1)), NumberFormat.amount(clock_cost)]
 	_clock_button.disabled = not Economy.can_overclock(state)
 

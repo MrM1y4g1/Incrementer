@@ -2,6 +2,8 @@ class_name FxLayer
 extends Control
 ## Short effects drawn over the whole screen: floating numbers, flashes and the Overflow shockwave.
 ## With reduced motion on, numbers fade in place, flashes are softer and there's no shockwave.
+## Positions come in as global ones, from get_global_rect(), and are converted to this layer's coordinates,
+## so the effects land in the right place wherever the screen sits in the window.
 
 const RING_SECONDS := 1.1
 
@@ -16,7 +18,8 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_flash = ColorRect.new()
 	_flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_flash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	# Top level, so a flash covers the whole window and not just the screen's 1280 × 720.
+	_flash.top_level = true
 	_flash.color = Color(1, 1, 1, 0)
 	add_child(_flash)
 	set_process(false)
@@ -31,7 +34,7 @@ func float_text(at: Vector2, text: String, color: Color) -> void:
 	label.add_theme_color_override("font_color", color)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(label)
-	label.position = at - Vector2(label.get_minimum_size().x / 2.0, 0.0)
+	label.position = _local(at) - Vector2(label.get_minimum_size().x / 2.0, 0.0)
 	var tween := label.create_tween().set_parallel(true)
 	if not reduced_motion:
 		tween.tween_property(label, "position:y", label.position.y - 46.0, 0.8).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
@@ -42,6 +45,8 @@ func float_text(at: Vector2, text: String, color: Color) -> void:
 ## Washes the screen with a colour that fades out.
 func flash(color: Color, seconds: float = 0.5) -> void:
 	var strength := color.a * (0.4 if reduced_motion else 1.0)
+	_flash.position = Vector2.ZERO
+	_flash.size = get_viewport_rect().size
 	_flash.color = Color(color, strength)
 	var tween := _flash.create_tween()
 	tween.tween_property(_flash, "color:a", 0.0, seconds).set_ease(Tween.EASE_OUT)
@@ -51,8 +56,12 @@ func flash(color: Color, seconds: float = 0.5) -> void:
 func shockwave(center: Vector2, color: Color) -> void:
 	if reduced_motion:
 		return
-	_rings.append({"center": center, "age": 0.0, "color": color})
+	_rings.append({"center": _local(center), "age": 0.0, "color": color})
 	set_process(true)
+
+
+func _local(point: Vector2) -> Vector2:
+	return get_global_transform().affine_inverse() * point
 
 
 func _process(delta: float) -> void:
