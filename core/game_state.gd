@@ -112,7 +112,8 @@ static func from_dict(data: Dictionary) -> GameState:
 	s.run_time = maxf(0.0, float(data.get("run_time", 0.0)))
 	s.clock_level = maxi(0, int(data.get("clock_level", 0)))
 	s.peak_count = maxf(s.run_peak, float(data.get("peak_count", 0.0)))
-	s.total_produced = maxf(0.0, float(data.get("total_produced", 0.0)))
+	# Before 1.1.0 this total could pass the largest float; JSON writes that INF as 1e99999.
+	s.total_produced = clampf(float(data.get("total_produced", 0.0)), 0.0, Formulas.MAX_FLOAT)
 	s.total_clicks = maxi(0, int(data.get("total_clicks", 0)))
 	s.play_time = maxf(0.0, float(data.get("play_time", 0.0)))
 	s.carry = maxf(0.0, float(data.get("carry", 0.0)))

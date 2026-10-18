@@ -9,6 +9,9 @@ const TEMP_PATH := "user://save.tmp"
 const START_OVER_PATH := "user://save-before-start-over.json"
 
 var enabled := true
+## True when the save on disk comes from a newer version of the game, which this one can't read. Saving
+## then stays off, so this version never replaces it with a new game.
+var newer_save := false
 var last_saved_unix := 0.0
 
 var _timer: Timer
@@ -69,6 +72,9 @@ func load_game() -> void:
 	if loaded.is_empty():
 		loaded = _read(BACKUP_PATH)
 	if loaded.is_empty():
+		newer_save = _is_newer(SAVE_PATH) or _is_newer(BACKUP_PATH)
+		if newer_save:
+			enabled = false
 		return
 	Game.replace_state(loaded["state"])
 
@@ -133,6 +139,8 @@ func storage_at_risk() -> bool:
 
 
 func status_text() -> String:
+	if newer_save:
+		return "Your save is from a newer version, so this one won't save over it"
 	if not enabled:
 		return "Saving off (--no-save)"
 	if storage_at_risk():
@@ -141,6 +149,10 @@ func status_text() -> String:
 		return "Autosave every %d s" % int(Settings.autosave_seconds)
 	var ago := Time.get_unix_time_from_system() - last_saved_unix
 	return "Saved %s ago" % NumberFormat.duration(ago)
+
+
+func _is_newer(path: String) -> bool:
+	return FileAccess.file_exists(path) and SaveCodec.version_of(FileAccess.get_file_as_string(path)) > SaveCodec.VERSION
 
 
 func _read(path: String) -> Dictionary:

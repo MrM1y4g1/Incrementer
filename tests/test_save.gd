@@ -144,3 +144,16 @@ func test_bad_values_are_cleaned_up() -> void:
 	check_eq(s.layer_bought[0], 0)
 	check_eq(s.layer_bought[1], 2)
 	check_eq(s.upgrades.size(), 1, "duplicate and empty ids are dropped")
+
+
+func test_an_infinite_lifetime_total_loads_as_the_largest_float() -> void:
+	# What 1.0.x wrote once the total passed the largest float.
+	var s := GameState.from_dict(JSON.parse_string('{"total_produced": 1e99999}'))
+	check_eq(s.total_produced, Formulas.MAX_FLOAT)
+
+
+func test_the_version_of_save_text() -> void:
+	check_eq(SaveCodec.version_of(SaveCodec.encode(GameState.new(), 1.0)), SaveCodec.VERSION)
+	check_eq(SaveCodec.version_of('{"version": 99, "state": {}}'), 99, "a save from a newer version")
+	check_eq(SaveCodec.version_of("not a save"), 0)
+	check(SaveCodec.decode('{"version": 99, "state": {}}').is_empty(), "a newer save can't be loaded")

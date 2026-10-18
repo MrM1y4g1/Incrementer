@@ -34,6 +34,15 @@ static func decode(text: String) -> Dictionary:
 	return {"state": GameState.from_dict(state_data), "saved_at": float(payload.get("saved_at", 0.0))}
 
 
+## The save format version of some save text, or 0 if it isn't a save.
+static func version_of(text: String) -> int:
+	var json := JSON.new()
+	if json.parse(text) != OK or typeof(json.data) != TYPE_DICTIONARY:
+		return 0
+	var payload: Dictionary = json.data
+	return int(payload.get("version", 0))
+
+
 ## Upgrades a saved payload one version at a time until it matches VERSION.
 static func migrate(payload: Dictionary, from_version: int) -> Dictionary:
 	var version := from_version

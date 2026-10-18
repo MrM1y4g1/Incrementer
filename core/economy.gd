@@ -84,7 +84,8 @@ static func add_count(state: GameState, amount: float) -> float:
 	var before := state.count
 	state.count = minf(Formulas.register_cap(state.register_bits), state.count + amount)
 	var added := maxf(0.0, state.count - before)
-	state.total_produced += added
+	# After the ending a full register adds the largest float every tick, which would overflow to INF.
+	state.total_produced = minf(Formulas.MAX_FLOAT, state.total_produced + added)
 	state.run_peak = maxf(state.run_peak, state.count)
 	state.peak_count = maxf(state.peak_count, state.count)
 	return added

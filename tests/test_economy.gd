@@ -136,3 +136,12 @@ func test_catch_up_ignores_a_clock_set_backwards() -> void:
 	s.layer_amount[0] = 1.0
 	check_eq(Economy.catch_up(s, content, -50.0), 0.0)
 	check_eq(s.count, 0.0)
+
+
+func test_the_lifetime_total_stays_finite() -> void:
+	var s := GameState.new()
+	s.register_bits = 1024
+	for _tick: int in 3:
+		s.count = 0.0
+		Economy.add_count(s, Formulas.MAX_FLOAT)
+	check_eq(s.total_produced, Formulas.MAX_FLOAT, "capped at the largest float, not INF")
