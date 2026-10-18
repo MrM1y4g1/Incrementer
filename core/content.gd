@@ -30,9 +30,14 @@ static func load_from(root: String) -> Content:
 		if res is FirmwareDef:
 			content.firmware.append(res as FirmwareDef)
 	content.layers.sort_custom(func(a: LayerDef, b: LayerDef) -> bool: return a.tier < b.tier)
-	content.upgrades.sort_custom(func(a: UpgradeDef, b: UpgradeDef) -> bool: return a.cost < b.cost)
+	# sort_custom isn't stable, so ties are broken by id: otherwise adding a file could reorder equal items,
+	# which changes the Firmware screen and what the scripted player buys first.
+	content.upgrades.sort_custom(func(a: UpgradeDef, b: UpgradeDef) -> bool:
+		return a.cost < b.cost or (a.cost == b.cost and String(a.id) < String(b.id)))
 	content.firmware.sort_custom(func(a: FirmwareDef, b: FirmwareDef) -> bool:
-		return a.column < b.column or (a.column == b.column and a.cost < b.cost))
+		if a.column != b.column:
+			return a.column < b.column
+		return a.cost < b.cost or (a.cost == b.cost and String(a.id) < String(b.id)))
 	content.index()
 	return content
 
@@ -108,6 +113,10 @@ func validate() -> PackedStringArray:
 			errors.append("Firmware %s targets layer %d, which doesn't exist" % [node.id, node.layer_tier])
 		if node.effect == FirmwareDef.Effect.RETIRED_OFFLINE_HOURS:
 			errors.append("Firmware %s uses the retired offline effect" % node.id)
+		if node.effect == FirmwareDef.Effect.SCRUB_SECONDS and node.value <= 0.0:
+			errors.append("Firmware %s needs a positive scrub time" % node.id)
+		if node.effect == FirmwareDef.Effect.FAULT_RATE and (node.value <= 0.0 or node.value > 1.0):
+			errors.append("Firmware %s must scale bad bits by more than 0 and at most 1" % node.id)
 	return errors
 
 

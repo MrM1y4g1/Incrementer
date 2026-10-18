@@ -54,3 +54,17 @@ func test_validation_catches_mistakes() -> void:
 	content.achievements = [Fixtures.achievement(&"", AchievementDef.Condition.CLICKS, 1.0)]
 	content.index()
 	check_eq(content.validate().size(), 4, "duplicate id, missing layer, missing id, missing name")
+
+
+func test_equal_items_keep_a_fixed_order() -> void:
+	var content := _real()
+	for i: int in content.firmware.size() - 1:
+		var a := content.firmware[i]
+		var b := content.firmware[i + 1]
+		if a.column == b.column and a.cost == b.cost:
+			check(String(a.id) < String(b.id), "%s and %s tie, so they sort by id" % [a.id, b.id])
+	for i: int in content.upgrades.size() - 1:
+		var a := content.upgrades[i]
+		var b := content.upgrades[i + 1]
+		if a.cost == b.cost:
+			check(String(a.id) < String(b.id), "%s and %s tie, so they sort by id" % [a.id, b.id])
