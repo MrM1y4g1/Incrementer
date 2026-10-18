@@ -56,6 +56,11 @@ func refresh(state: GameState, content: Content, mode: int) -> void:
 	_detail_label.text = "%s owned  ·  +%s %s/s" % [NumberFormat.amount(state.layer_amount[index]), NumberFormat.rate(makes), target]
 
 	var n := Economy.buy_count(state, content, index, mode)
+	# Past about 2^1024 a price no longer fits in a float.
+	if not is_finite(Economy.next_cost(state, content, index)):
+		_button.text = "Maxed"
+		_button.disabled = true
+		return
 	if mode == Economy.BuyMode.MAX:
 		if n > 0:
 			_button.text = "×%d  %s" % [n, NumberFormat.amount(Economy.cost_of(state, content, index, n))]

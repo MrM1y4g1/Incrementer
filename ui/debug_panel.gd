@@ -27,8 +27,13 @@ func _init() -> void:
 		speed_row.add_child(speed_button)
 
 	var bits_row := _row(box, "Register")
-	for bits: int in [8, 16, 32, 64]:
+	for bits: int in Formulas.REGISTER_WIDTHS:
 		bits_row.add_child(_button(str(bits), _set_bits.bind(bits)))
+
+	var carry_row := _row(box, "Carry")
+	carry_row.add_child(_button("+10", _add_carry.bind(10.0)))
+	carry_row.add_child(_button("+1,000", _add_carry.bind(1000.0)))
+	carry_row.add_child(_button("+1 billion", _add_carry.bind(1e9)))
 
 	var save_row := _row(box, "Save")
 	_wipe_button = _button("Wipe save", _wipe)
@@ -45,6 +50,11 @@ func _add_hour() -> void:
 
 func _set_speed(speed: float) -> void:
 	Game.speed = speed
+
+
+func _add_carry(amount: float) -> void:
+	Game.state.carry += amount
+	Game.state.total_carry += amount
 
 
 func _set_bits(bits: int) -> void:

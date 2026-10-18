@@ -20,6 +20,23 @@ static func build() -> Theme:
 	theme.set_type_variation("AchievementOff", "PanelContainer")
 	theme.set_stylebox("panel", "AchievementOff", _box(Color(0, 0, 0, 0), Palette.LINE, 1, 3, 10.0))
 
+	theme.set_type_variation("DangerPanel", "PanelContainer")
+	theme.set_stylebox("panel", "DangerPanel", _box(Palette.PANEL, Palette.MAGENTA, 1, 6, 20.0))
+	theme.set_type_variation("OverflowToast", "PanelContainer")
+	theme.set_stylebox("panel", "OverflowToast", _box(Palette.PANEL, Palette.MAGENTA, 1, 4, 12.0))
+	theme.set_type_variation("OverflowButton", "Button")
+	theme.set_stylebox("normal", "OverflowButton", _box(Color(Palette.MAGENTA, 0.08), Color(Palette.MAGENTA, 0.6), 1, 3, 10.0))
+	theme.set_stylebox("hover", "OverflowButton", _box(Color(Palette.MAGENTA, 0.16), Color(Palette.MAGENTA, 0.9), 1, 3, 10.0))
+	theme.set_stylebox("pressed", "OverflowButton", _box(Color(Palette.MAGENTA, 0.3), Palette.MAGENTA, 1, 3, 10.0))
+
+	theme.set_stylebox("normal", "TextEdit", _box(Palette.ROW, Palette.LINE, 1, 3, 8.0))
+	theme.set_stylebox("focus", "TextEdit", _box(Color(0, 0, 0, 0), Palette.CYAN, 1, 3, 8.0))
+	theme.set_color("font_color", "TextEdit", Palette.ICE)
+	theme.set_color("font_color", "CheckButton", Palette.ICE)
+	theme.set_color("font_hover_color", "CheckButton", Palette.ICE)
+	theme.set_color("font_pressed_color", "CheckButton", Palette.ICE)
+	theme.set_color("font_hover_pressed_color", "CheckButton", Palette.ICE)
+
 	theme.set_stylebox("scroll", "VScrollBar", _box(Color(Palette.LINE, 0.25), Color(0, 0, 0, 0), 0, 3, 3.0))
 	theme.set_stylebox("grabber", "VScrollBar", _box(Palette.LINE, Color(0, 0, 0, 0), 0, 3, 3.0))
 	theme.set_stylebox("grabber_highlight", "VScrollBar", _box(Color(Palette.CYAN, 0.5), Color(0, 0, 0, 0), 0, 3, 3.0))

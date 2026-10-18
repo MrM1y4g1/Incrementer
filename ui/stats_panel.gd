@@ -4,7 +4,7 @@ extends PanelContainer
 
 signal closed
 
-const STAT_NAMES: PackedStringArray = ["Played", "Clicks", "Peak Count", "Total counted", "Register", "Clock", "Upgrades", "Achievements"]
+const STAT_NAMES: PackedStringArray = ["Played", "This run", "Clicks", "Peak Count", "Total counted", "Register", "Clock", "Upgrades", "Overflows", "Carry earned", "Firmware", "Achievements"]
 
 var _values := {}
 var _cells := {}
@@ -83,7 +83,11 @@ func refresh(state: GameState, content: Content) -> void:
 	_set_stat("Total counted", NumberFormat.amount(state.total_produced))
 	_set_stat("Register", "%d-bit" % state.register_bits)
 	_set_stat("Clock", "%s Hz  (level %d)" % [NumberFormat.rate(Formulas.clock_multiplier(state.clock_level)), state.clock_level])
+	_set_stat("This run", NumberFormat.duration(state.run_time))
 	_set_stat("Upgrades", "%d of %d" % [state.upgrades.size(), content.upgrades.size()])
+	_set_stat("Overflows", str(state.overflows))
+	_set_stat("Carry earned", NumberFormat.amount(state.total_carry))
+	_set_stat("Firmware", "%d of %d" % [state.firmware.size(), content.firmware.size()])
 	var unlocked := state.achievements.size()
 	_set_stat("Achievements", "%d of %d" % [unlocked, content.achievements.size()])
 	_summary.text = "ACHIEVEMENTS  ·  %d UNLOCKED  ·  +%d%% OUTPUT" % [unlocked, roundi(unlocked * Formulas.ACHIEVEMENT_BONUS * 100.0)]
