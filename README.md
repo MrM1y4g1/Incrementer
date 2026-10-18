@@ -8,7 +8,7 @@ Built with **Godot 4.7.2** (GDScript, Compatibility renderer) for the Web and Wi
 
 ## Status
 
-Milestone **M1 (core loop)** is in: clicking, eight Software layers that produce each other, buying in ×1, ×10 or Max, register widths from 8 to 64 bits, saves with offline progress, and a balance simulator. See [docs/PROGRESS.md](docs/PROGRESS.md) for screenshots and notes from each step.
+Milestones **M1 (core loop)** and **M2 (progression)** are in: eight Software layers that produce each other, register widths from 8 to 64 bits, 40 upgrades, 30 achievements, Overclock, a stats screen, saves with offline progress, a debug panel and a balance simulator. See [docs/PROGRESS.md](docs/PROGRESS.md) for screenshots and notes from each step.
 
 ## Running it
 

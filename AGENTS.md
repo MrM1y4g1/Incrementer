@@ -38,19 +38,22 @@ Run from the repository root. `G=.tools/godot/Godot_v4.7.2-stable_win64_console.
 | Screenshot | `$G --path . --resolution 1280x720 -- --no-save --autoplay=<seconds> --capture=docs/screenshots/<name>.png` |
 | Open the editor | `.tools/godot/Godot_v4.7.2-stable_win64.exe --path . --editor` |
 
-Dev flags go after `--`: `--no-save` (never read or write the save), `--autoplay=<seconds>` (fast-forward the scripted player before the first frame), `--capture=<png>` (save a screenshot after a few frames, then quit). Captures need a real window, so they don't work with `--headless`.
+Dev flags go after `--`: `--no-save` (never read or write the save), `--autoplay=<seconds>` (fast-forward the scripted player before the first frame), `--open=<views>` (comma-separated: `upgrades`, `stats`, `debug`, `toast`), `--capture=<png>` (save a screenshot after a few frames, then quit). Captures need a real window, so they don't work with `--headless`. In debug builds, **F3** toggles the debug panel.
 
 ## Layout
 
 ```
-autoload/   EventBus (signals), ContentDB (loads data), Game (state + 20 Hz tick), SaveManager (JSON saves)
-core/       Pure logic: Formulas, Economy, GameState, SaveCodec, NumberFormat, ContentLoader, AutoPlayer
-data/defs/  Resource classes (LayerDef, …)
-data/layers/  One .tres per Software layer: the balance numbers live here
-ui/         main.tscn + main.gd (screen built in code), LayerRow, RegisterDisplay, Palette, ThemeFactory
-tests/      run_tests.gd (runner), lib/test_case.gd, test_*.gd
-tools/      sim.gd (balance simulator)
-docs/       PROGRESS.md (progress log), screenshots/
+autoload/          EventBus (signals), ContentDB (loads and checks data), Game (state + 20 Hz tick), SaveManager (JSON saves)
+core/              Pure logic: Formulas, Economy, GameState, Content, Achievements, SaveCodec, NumberFormat, AutoPlayer
+data/defs/         Resource classes: LayerDef, UpgradeDef, AchievementDef
+data/layers/       One .tres per Software layer: most balance numbers live here
+data/upgrades/     One .tres per upgrade
+data/achievements/ One .tres per achievement
+ui/                main.tscn + main.gd (screen built in code), LayerRow, UpgradeCard, RegisterDisplay,
+                   StatsPanel, DebugPanel, Palette, ThemeFactory
+tests/             run_tests.gd (runner), lib/ (TestCase, Fixtures), test_*.gd
+tools/             sim.gd (balance simulator)
+docs/              PROGRESS.md (progress log), screenshots/
 ```
 
 ## Rules that keep the architecture honest
@@ -61,6 +64,8 @@ docs/       PROGRESS.md (progress log), screenshots/
 4. **Saves are versioned.** Any change to `GameState.to_dict()` bumps `SaveCodec.VERSION` and adds a migration step plus a test that loads the old format.
 5. **The UI only asks and listens.** It calls `Game.click()`, `Game.buy()`, `Game.widen()`, reads `Game.state`, and listens to `EventBus`. It refreshes at 10 Hz, not every frame.
 6. **Floats stay finite.** Everything is capped by the register; the 1024-bit cap is `Formulas.MAX_FLOAT`. Test anything near 1e308.
+7. **Global boosts multiply the Count per second only.** Layers produce each other in a chain, so a multiplier on every layer compounds: ×2 on six active layers is roughly ×64. The clock, achievements and `ALL_MULTIPLIER` upgrades therefore apply to layer 1 only; `LAYER_MULTIPLIER` upgrades apply to their own layer.
+8. **Content is validated at startup.** `Content.validate()` lists problems (duplicate ids, missing layers, bad costs); `ContentDB` stops debug builds on any. `tests/test_content.gd` runs the same check.
 
 ## Code style
 
@@ -72,7 +77,7 @@ docs/       PROGRESS.md (progress log), screenshots/
 ## Tests
 
 - Every change to `core/` comes with tests in `tests/test_*.gd`. A test file extends `TestCase`; methods named `test_*` run automatically. Use `check`, `check_eq` and `check_near`.
-- Tests use their own layer numbers (see `tests/test_economy.gd`) so balance changes in `data/` don't break them; `tests/test_content.gd` checks the real data for structural mistakes.
+- Tests build their own content with `Fixtures` (`tests/lib/fixtures.gd`) so balance changes in `data/` don't break them; `tests/test_content.gd` checks the real data for structural mistakes.
 - CI (`.github/workflows/tests.yml`) imports the project and runs the suite on every push and pull request. Keep it green.
 
 ## Screenshots and the progress log

@@ -2,6 +2,45 @@
 
 Newest first. Screenshots are captured from the real game at 1280 × 720. The `--autoplay` flag fast-forwards a scripted player, so the later shots show a run in progress.
 
+## 18 Oct 2026 · M2: upgrades, achievements, clock, stats and debug tools
+
+**What's in**
+
+- **40 upgrades** as data files in `data/upgrades/`: four ×2 upgrades per layer (after 10, 25, 50 and 100 bought), two click upgrades, two that make clicks add a share of Count per second, and four Count-per-second boosts. They appear in a new **Upgrades** tab, cheapest first, as soon as their requirements are met. Ones the register can't hold yet say which width they need.
+- **30 achievements** in `data/achievements/`, each worth +1% Count per second, with a pop-up when one unlocks.
+- **Overclock:** each level raises the clock by ×1.125 and costs 100× the last.
+- **Stats screen** with run numbers and every achievement.
+- **Debug panel** (debug builds only, F3): fill the register, add an hour of production, run at ×10 or ×100 speed, set the register width, wipe the save.
+- Content is checked at startup: duplicate or missing ids, or upgrades pointing at layers that don't exist, stop a debug build with a clear message.
+- Save format version 2, with a migration that loads version 1 saves. 53 tests.
+
+**Upgrades tab, 10 minutes in.**
+
+![Upgrades tab](screenshots/2026-10-18-m2-01-upgrades.png)
+
+**25 minutes in,** with an achievement pop-up.
+
+![25 minutes in](screenshots/2026-10-18-m2-02-25-minutes.png)
+
+**Stats and achievements, 45 minutes in.**
+
+![Stats screen](screenshots/2026-10-18-m2-03-stats.png)
+
+**Debug panel** (F3 in debug builds).
+
+![Debug panel](screenshots/2026-10-18-m2-04-debug.png)
+
+**A balance finding.** Software layers produce each other in a chain, so a boost applied to every layer compounds down the chain: "×2 to everything" was really about ×2 to the power of the number of active layers. With upgrades and the clock added, the simulator filled a 64-bit register in 7 minutes. Global boosts (the clock, achievements and the Count-per-second upgrades) now multiply the Count per second only, so ×2 means ×2. Upgrades for a single layer still multiply that layer. The ×2 milestone bonus now comes every **40** units bought.
+
+| Milestone | Simulated | Plan target |
+|---|---|---|
+| 16-bit | 0:44 | 1:00 |
+| 32-bit | 7:23 | 6:00 |
+| 64-bit | 21:32 | 20:00 |
+| 64-bit full (first Overflow) | 49:27 | 50:00 (40–60) |
+
+**Next (M3):** the Overflow itself, Carry bits, the Firmware tree, registers up to 1024 bits, the Hypervisor layer, autobuyers and the V1 ending.
+
 ## 18 Oct 2026 · M0 and M1: project set up, core loop playable
 
 **What's in**
