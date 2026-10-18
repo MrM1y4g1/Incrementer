@@ -1,5 +1,6 @@
 extends Node
 ## Loads the save at startup, autosaves on the interval set in Settings, and saves on quit or when the window loses focus.
+## The game only runs while it's open: a save carries on from where it was saved, however long ago.
 ## Pass `--no-save` after `--` on the command line to run without reading or writing the save file.
 
 const SAVE_PATH := "user://save.json"
@@ -8,9 +9,6 @@ const TEMP_PATH := "user://save.tmp"
 const START_OVER_PATH := "user://save-before-start-over.json"
 
 var enabled := true
-## Filled in when a save is loaded, so the UI can show a "While you were away" report.
-var offline_seconds := 0.0
-var offline_gain := 0.0
 var last_saved_unix := 0.0
 
 var _timer: Timer
@@ -70,12 +68,7 @@ func load_game() -> void:
 		loaded = _read(BACKUP_PATH)
 	if loaded.is_empty():
 		return
-	var state: GameState = loaded["state"]
-	var elapsed := Time.get_unix_time_from_system() - float(loaded["saved_at"])
-	Economy.refresh_effects(state, ContentDB.content)
-	offline_seconds = clampf(elapsed, 0.0, state.offline_cap_seconds)
-	offline_gain = Economy.catch_up(state, ContentDB.content, elapsed)
-	Game.replace_state(state)
+	Game.replace_state(loaded["state"])
 
 
 ## The current game as one line of text the player can copy somewhere safe.
@@ -118,8 +111,6 @@ func wipe() -> void:
 			if FileAccess.file_exists(path):
 				DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 	Game.replace_state(GameState.new())
-	offline_seconds = 0.0
-	offline_gain = 0.0
 	last_saved_unix = 0.0
 
 

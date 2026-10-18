@@ -1,8 +1,8 @@
 class_name TitleScreen
 extends Control
 ## The start screen: the game's name over a 16-bit counter that ticks over, then Continue (Start for a new
-## save), New game, Settings and Quit. It covers the main screen, and the machine keeps running underneath,
-## as it does while the player is away.
+## save), New game, Settings and Quit. It covers the main screen, and the machine keeps running underneath
+## because the game is open.
 
 signal continue_pressed
 signal new_game_pressed

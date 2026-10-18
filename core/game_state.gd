@@ -47,7 +47,6 @@ var max_bits := 64
 var milestone_step := Formulas.MILESTONE_EVERY
 var boot_bits := 8
 var carry_multiplier := 1.0
-var offline_cap_seconds := 8.0 * 3600.0
 ## Firmware effects the player owns, as FirmwareDef.Effect values.
 var firmware_effects := {}
 

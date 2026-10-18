@@ -13,8 +13,9 @@ enum Effect {
 	LAYER_MULTIPLIER,
 	## Carry earned by an Overflow ×value.
 	CARRY_MULTIPLIER,
-	## Offline progress covers up to `value` hours.
-	OFFLINE_HOURS,
+	## Unused since 1.1.0, when the game stopped running while closed. Kept so the effects after it keep
+	## their numbers in the .tres files; Content.validate rejects it.
+	RETIRED_OFFLINE_HOURS,
 	## Buys layers 1 to 4 automatically.
 	AUTOBUY_LOW,
 	## Buys layers 5 to 8 automatically.

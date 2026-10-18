@@ -14,7 +14,6 @@ extends Control
 ##   --capture=<png path>   save a screenshot after a few frames, then quit
 
 const REFRESH_SECONDS := 0.1
-const OFFLINE_REPORT_MIN_SECONDS := 60.0
 const SIDE_WIDTH := 470.0
 const TOAST_SECONDS := 4.0
 
@@ -61,8 +60,6 @@ var _confirm_panel: PanelContainer
 var _confirm_label: Label
 var _start_over_panel: PanelContainer
 var _start_over_status: Label
-var _offline_panel: PanelContainer
-var _offline_label: Label
 
 
 func _ready() -> void:
@@ -86,7 +83,6 @@ func _ready() -> void:
 	# Screenshots and the autoplayer go straight to the machine.
 	if _skip_title:
 		_title.visible = false
-		_show_offline_report()
 	else:
 		_show_title()
 	if _capture_path != "":
@@ -407,18 +403,6 @@ To keep a copy, press Copy save and paste it somewhere safe. Save data → Impor
 	keep.custom_minimum_size = Vector2(110, 40)
 	start_buttons.add_child(keep)
 
-	_offline_panel = PanelContainer.new()
-	_offline_panel.theme_type_variation = &"OverlayPanel"
-	_add_overlay(_offline_panel, Vector2(440, 0))
-	var offline_box := VBoxContainer.new()
-	offline_box.add_theme_constant_override("separation", 12)
-	_offline_panel.add_child(offline_box)
-	offline_box.add_child(_heading("WHILE YOU WERE AWAY"))
-	_offline_label = _label("", 18, Palette.ICE)
-	_offline_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	offline_box.add_child(_offline_label)
-	offline_box.add_child(_small_button("Continue", _close_overlays))
-
 	_toasts = VBoxContainer.new()
 	_toasts.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_toasts.anchor_left = 1.0
@@ -671,7 +655,6 @@ func _show_title() -> void:
 func _on_title_continue() -> void:
 	_title.visible = false
 	get_viewport().gui_release_focus()
-	_show_offline_report()
 
 
 func _ask_start_over() -> void:
@@ -699,14 +682,6 @@ func _quit() -> void:
 	if SaveManager.enabled:
 		SaveManager.save_game()
 	get_tree().quit()
-
-
-func _show_offline_report() -> void:
-	if SaveManager.offline_seconds < OFFLINE_REPORT_MIN_SECONDS:
-		return
-	_offline_label.text = "The machine ran for %s while you were gone and counted %s more." % [
-		NumberFormat.duration(SaveManager.offline_seconds), NumberFormat.amount(SaveManager.offline_gain)]
-	_open(_offline_panel)
 
 
 func _toast(variation: StringName, heading: String, heading_color: Color, title: String, body: String) -> void:

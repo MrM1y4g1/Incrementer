@@ -84,16 +84,10 @@ func test_carry_multiplier() -> void:
 	check_eq(Economy.overflow(s, content), 4.0)
 
 
-func test_watchdog_extends_offline_progress() -> void:
-	var watchdog := _node(&"watchdog", FirmwareDef.Effect.OFFLINE_HOURS, 24.0, 1.0)
-	var content := _content_with([watchdog])
-	var s := GameState.new()
-	s.register_bits = 32
-	s.layer_amount[0] = 1.0
-	s.carry = 1.0
-	Economy.buy_firmware(s, content, watchdog)
-	Economy.catch_up(s, content, 30.0 * 3600.0)
-	check_near(s.count, 24.0 * 3600.0, 1e-9)
+func test_the_retired_offline_effect_is_rejected() -> void:
+	var old := _node(&"old", FirmwareDef.Effect.RETIRED_OFFLINE_HOURS, 24.0, 1.0)
+	var content := _content_with([old])
+	check(not content.validate().is_empty(), "content using the retired offline effect fails validation")
 
 
 func test_layer_autobuyer_spends_a_small_share_and_respects_its_switch() -> void:

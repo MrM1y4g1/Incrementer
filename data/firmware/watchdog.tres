@@ -6,9 +6,9 @@
 script = ExtResource("1_def")
 id = &"watchdog"
 display_name = "Watchdog timer"
-description = "Offline progress covers up to 24 hours"
-effect = 5
-value = 24.0
+description = "Count per second ×2"
+effect = 2
+value = 2.0
 layer_tier = 0
 cost = 2.0
 requires = PackedStringArray("boot_rom_16")

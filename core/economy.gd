@@ -1,14 +1,15 @@
 class_name Economy
 extends RefCounted
-## The only code that changes the numbers. Live play, offline catch-up, the autoplayer, the simulator
-## and the tests all go through these functions, so they can't disagree.
+## The only code that changes the numbers. Live play, catch-up after a long frame, the autoplayer, the
+## simulator and the tests all go through these functions, so they can't disagree.
 
 enum BuyMode { ONE = 1, TEN = 10, MAX = -1 }
 
 const CLICK_VALUE := 1.0
 ## Without a Wide bus Firmware node the register stops at this width.
 const BASE_MAX_BITS := 64
-const BASE_OFFLINE_HOURS := 8.0
+## The longest gap `catch_up` fills, such as a computer that slept with the game open.
+const MAX_CATCH_UP_SECONDS := 8.0 * 3600.0
 ## Autobuyers only buy units costing at most this share of the Count, so the player can still save up.
 const AUTOBUY_SPEND_SHARE := 0.1
 
@@ -28,12 +29,13 @@ static func advance(state: GameState, content: Content, seconds: float) -> void:
 		add_count(state, start[0] * layer_rate(state, content, 0) * seconds)
 
 
-## Runs `seconds` of production in fixed steps, with autobuyers, up to the offline cap.
-## The run's time moves on with it, so the Carry bonus keeps rippling in while the player is away.
-## Returns the Count gained.
+## Runs `seconds` of production in fixed steps, with autobuyers, up to MAX_CATCH_UP_SECONDS. For long gaps
+## while the game is open, such as a minimised window or a background browser tab. The game doesn't run
+## while it's closed, so nothing calls this on load. The run's time moves on with it, so the Carry bonus
+## keeps rippling in. Returns the Count gained.
 static func catch_up(state: GameState, content: Content, seconds: float, step: float = 1.0) -> float:
 	refresh_effects(state, content)
-	var remaining := clampf(seconds, 0.0, state.offline_cap_seconds)
+	var remaining := clampf(seconds, 0.0, MAX_CATCH_UP_SECONDS)
 	var before := state.count
 	while remaining > 0.0:
 		var dt := minf(step, remaining)
@@ -44,7 +46,7 @@ static func catch_up(state: GameState, content: Content, seconds: float, step: f
 	return state.count - before
 
 
-## Time the player spends in the game. Offline catch-up adds to the run's time but not to play time.
+## Time the player spends in the game, for the run and the whole save.
 static func add_time(state: GameState, seconds: float) -> void:
 	add_play_time(state, seconds)
 	state.run_time += seconds
@@ -120,7 +122,6 @@ static func refresh_effects(state: GameState, content: Content) -> void:
 	var max_bits := BASE_MAX_BITS
 	var boot_bits := 8
 	var carry_multiplier := 1.0
-	var offline_hours := BASE_OFFLINE_HOURS
 	var milestone_step := Formulas.MILESTONE_EVERY
 	var effects := {}
 	for id: StringName in state.firmware:
@@ -139,8 +140,6 @@ static func refresh_effects(state: GameState, content: Content) -> void:
 				_multiply(multipliers, node.layer_tier, node.value)
 			FirmwareDef.Effect.CARRY_MULTIPLIER:
 				carry_multiplier *= node.value
-			FirmwareDef.Effect.OFFLINE_HOURS:
-				offline_hours = maxf(offline_hours, node.value)
 			FirmwareDef.Effect.MILESTONE_STEP:
 				milestone_step = mini(milestone_step, int(node.value))
 
@@ -153,7 +152,6 @@ static func refresh_effects(state: GameState, content: Content) -> void:
 	state.max_bits = max_bits
 	state.boot_bits = mini(boot_bits, max_bits)
 	state.carry_multiplier = carry_multiplier
-	state.offline_cap_seconds = offline_hours * 3600.0
 	state.milestone_step = milestone_step
 	state.firmware_effects = effects
 	state.effects_dirty = false

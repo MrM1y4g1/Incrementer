@@ -108,38 +108,29 @@ func test_overclock_spends_and_speeds_everything_up() -> void:
 	check_near(s.count, Formulas.CLOCK_STEP, 1e-12)
 
 
-func test_offline_catch_up_matches_live_play() -> void:
+func test_catch_up_matches_live_play() -> void:
 	var content := Fixtures.content()
-	var offline := GameState.new()
-	offline.register_bits = 64
-	offline.layer_amount[1] = 1.0
+	var caught_up := GameState.new()
+	caught_up.register_bits = 64
+	caught_up.layer_amount[1] = 1.0
 	var live := GameState.new()
 	live.register_bits = 64
 	live.layer_amount[1] = 1.0
-	Economy.catch_up(offline, content, 3600.0)
+	Economy.catch_up(caught_up, content, 3600.0)
 	for _tick: int in 72000:
 		Economy.advance(live, content, 0.05)
-	check_near(offline.count, live.count, 0.001, "one hour offline should match one hour live")
+	check_near(caught_up.count, live.count, 0.001, "an hour caught up in one go should match an hour of ticks")
 
 
-func test_offline_eight_hours() -> void:
+func test_catch_up_is_capped() -> void:
 	var content := Fixtures.content()
 	var s := GameState.new()
 	s.register_bits = 32
 	s.layer_amount[0] = 1.0
-	check_near(Economy.catch_up(s, content, 8.0 * 3600.0), 8.0 * 3600.0, 1e-9)
+	check_near(Economy.catch_up(s, content, 30.0 * 3600.0), Economy.MAX_CATCH_UP_SECONDS, 1e-9)
 
 
-func test_offline_thirty_hours_is_capped_at_eight() -> void:
-	var content := Fixtures.content()
-	var s := GameState.new()
-	s.register_bits = 32
-	s.layer_amount[0] = 1.0
-	Economy.catch_up(s, content, 30.0 * 3600.0)
-	check_near(s.count, 8.0 * 3600.0, 1e-9)
-
-
-func test_offline_ignores_a_clock_set_backwards() -> void:
+func test_catch_up_ignores_a_clock_set_backwards() -> void:
 	var content := Fixtures.content()
 	var s := GameState.new()
 	s.layer_amount[0] = 1.0

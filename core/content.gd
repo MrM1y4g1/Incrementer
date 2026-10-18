@@ -106,6 +106,8 @@ func validate() -> PackedStringArray:
 			errors.append("Firmware %s sets %d bits, which isn't a register width" % [node.id, int(node.value)])
 		if node.effect == FirmwareDef.Effect.LAYER_MULTIPLIER and not _is_tier(node.layer_tier):
 			errors.append("Firmware %s targets layer %d, which doesn't exist" % [node.id, node.layer_tier])
+		if node.effect == FirmwareDef.Effect.RETIRED_OFFLINE_HOURS:
+			errors.append("Firmware %s uses the retired offline effect" % node.id)
 	return errors
 
 

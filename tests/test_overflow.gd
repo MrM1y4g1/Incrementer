@@ -104,14 +104,14 @@ func test_the_carry_bonus_ripples_in_over_a_run() -> void:
 	check_near(Economy.layer_rate(s, content, 0), full, 1e-3)
 
 
-func test_the_ripple_goes_on_while_away() -> void:
+func test_the_ripple_goes_on_during_catch_up() -> void:
 	var content := Fixtures.content()
 	var s := GameState.new()
 	s.total_carry = 2.0
 	s.play_time = 100.0
 	Economy.catch_up(s, content, 2.0 * Formulas.CARRY_RIPPLE_SECONDS)
 	check_eq(s.run_time, 2.0 * Formulas.CARRY_RIPPLE_SECONDS)
-	check_eq(s.play_time, 100.0, "time away isn't play time")
+	check_eq(s.play_time, 100.0, "catch_up leaves play time to its caller")
 	check_near(Economy.carry_bonus_now(s), Formulas.carry_bonus(2.0), 1e-3)
 
 
