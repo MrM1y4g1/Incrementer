@@ -8,7 +8,7 @@ Built with **Godot 4.7.2** (GDScript, Compatibility renderer) for the Web and Wi
 
 ## Status
 
-Milestones **M1 (core loop)** and **M2 (progression)** are in: eight Software layers that produce each other, register widths from 8 to 64 bits, 40 upgrades, 30 achievements, Overclock, a stats screen, saves with offline progress, a debug panel and a balance simulator. See [docs/PROGRESS.md](docs/PROGRESS.md) for screenshots and notes from each step.
+Milestones **M1 (core loop)**, **M2 (progression)** and **M3 (Overflow and Firmware)** are in. The game is playable from the first click to the V1 ending: eight Software layers, register widths from 8 to 1024 bits, 40 upgrades, 34 achievements, Overclock, the Overflow, Carry, 23 Firmware nodes with autobuyers, save export and import, and offline progress. The late-game pacing is still being balanced (M4).
 
 ## Running it
 

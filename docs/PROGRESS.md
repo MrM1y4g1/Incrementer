@@ -2,6 +2,40 @@
 
 Newest first. Screenshots are captured from the real game at 1280 × 720. The `--autoplay` flag fast-forwards a scripted player, so the later shots show a run in progress.
 
+## 18 Oct 2026 · M3: Overflow, Carry, Firmware and the V1 ending
+
+**What's in**
+
+- **Overflow.** Once a run has filled a 64-bit register, an Overflow button appears (in magenta, the Overflow colour). It asks for confirmation, then resets the Count, layers, register, clock and this run's upgrades and pays **Carry**: 2 for a full 64-bit register, doubling for every 16 bits beyond it. Carry earned also boosts Count per second, by ×(1 + Carry earned)^10, so every run starts faster than the last.
+- **Firmware:** 23 permanent nodes in five columns, bought with Carry. They include **Wide bus I–IV**, which unlock 128, 256, 512 and 1024-bit registers (Hypervisors arrive at 128); **Boot ROMs** that start runs on a wider register; Count multipliers; Carry multipliers; a 24-hour offline cap; three nodes that bring the ×2 milestones sooner; and **autobuyers** for layers, Overclock and widening, each with an on/off switch.
+- **The V1 ending.** Filling a 1024-bit register (1.80e308, the largest 64-bit float) shows the ending screen with the run history. The save stays playable.
+- **Save data:** export the whole game as text and import it again, a backup for browser players. The save format is now version 3; M1 and M2 saves still load.
+- Wider registers draw as a grid of 32 columns. 71 tests, and the simulator now plays all the way to the ending.
+
+**Overflow confirmation,** early in the second run.
+
+![Overflow confirmation](screenshots/2026-10-18-m3-01-overflow.png)
+
+**A 128-bit register,** about an hour and ten minutes in.
+
+![128-bit register](screenshots/2026-10-18-m3-02-128-bit.png)
+
+**Firmware.**
+
+![Firmware screen](screenshots/2026-10-18-m3-03-firmware.png)
+
+**The V1 ending** and run history, from a simulated playthrough.
+
+![Ending screen](screenshots/2026-10-18-m3-04-ending.png)
+
+**Save data:** export and import.
+
+![Save data](screenshots/2026-10-18-m3-05-save-data.png)
+
+**Simulated journey.** First Overflow at 49 min, 128-bit at 52 min, 256-bit at 1h 22m, 512-bit at 1h 27m, ending at **3h 20m** (plan: 6h 30m). Runs at the same width are too uneven: some take seconds, one takes nearly two hours. The milestone that most needs more time is the 256-bit stretch.
+
+**Next (M4):** the balance pass. Smooth the late game so each run takes a steady 30–60 minutes and the ending lands near 6½ hours, make the autoplayer's Overflow timing more human, and get playtest feedback.
+
 ## 18 Oct 2026 · M2: upgrades, achievements, clock, stats and debug tools
 
 **What's in**
