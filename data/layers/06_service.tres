@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="LayerDef" format=3]
+
+[ext_resource type="Script" path="res://data/defs/layer_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"service"
+display_name = "Service"
+plural_name = "Services"
+tier = 6
+base_cost = 1e+13
+cost_growth = 1.4
+base_rate = 0.08
+unlock_bits = 64

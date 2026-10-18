@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="LayerDef" format=3]
+
+[ext_resource type="Script" path="res://data/defs/layer_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"incrementer"
+display_name = "Incrementer"
+plural_name = "Incrementers"
+tier = 1
+base_cost = 10.0
+cost_growth = 1.2
+base_rate = 0.5
+unlock_bits = 8

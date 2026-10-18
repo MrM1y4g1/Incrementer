@@ -1,0 +1,61 @@
+class_name Formulas
+extends RefCounted
+## Pure maths for costs, caps and bonuses. No nodes, no autoloads, so tests and tools can call it headless.
+
+## The largest finite 64-bit float. A full 1024-bit register sits exactly at this limit.
+const MAX_FLOAT := 1.7976931348623157e308
+const REGISTER_WIDTHS: Array[int] = [8, 16, 32, 64, 128, 256, 512, 1024]
+## Widening the register costs this share of a full register.
+const WIDEN_COST_SHARE := 0.75
+## Each layer's output doubles every time this many units of it have been bought.
+const MILESTONE_EVERY := 20
+
+
+## Price of the next single unit.
+static func next_cost(base: float, growth: float, bought: int) -> float:
+	return base * pow(growth, bought)
+
+
+## Price of buying `n` units in a row, starting after `bought` units.
+static func cost_of(base: float, growth: float, bought: int, n: int) -> float:
+	if n <= 0:
+		return 0.0
+	return next_cost(base, growth, bought) * (pow(growth, n) - 1.0) / (growth - 1.0)
+
+
+## How many units `budget` can buy in a row.
+static func max_affordable(base: float, growth: float, bought: int, budget: float) -> int:
+	var first := next_cost(base, growth, bought)
+	if first <= 0.0 or budget < first:
+		return 0
+	var n := int(floor(log(1.0 + budget * (growth - 1.0) / first) / log(growth)))
+	# Float rounding can land one off in either direction; settle on the exact answer.
+	while n > 0 and cost_of(base, growth, bought, n) > budget:
+		n -= 1
+	while cost_of(base, growth, bought, n + 1) <= budget:
+		n += 1
+	return n
+
+
+## The largest Count a register of this width can hold.
+static func register_cap(bits: int) -> float:
+	if bits >= 1024:
+		return MAX_FLOAT
+	return pow(2.0, bits) - 1.0
+
+
+static func widen_cost(bits: int) -> float:
+	return floor(WIDEN_COST_SHARE * (register_cap(bits) + 1.0))
+
+
+## The next register width, or -1 at the top of the ladder.
+static func next_width(bits: int) -> int:
+	var i := REGISTER_WIDTHS.find(bits)
+	if i < 0 or i == REGISTER_WIDTHS.size() - 1:
+		return -1
+	return REGISTER_WIDTHS[i + 1]
+
+
+## Output doubles for every MILESTONE_EVERY units bought.
+static func milestone_multiplier(bought: int) -> float:
+	return pow(2.0, floor(float(bought) / MILESTONE_EVERY))
