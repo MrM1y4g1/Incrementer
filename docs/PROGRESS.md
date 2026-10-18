@@ -2,6 +2,41 @@
 
 Newest first. Screenshots are captured from the real game at 1280 × 720. The `--autoplay` flag fast-forwards a scripted player, so the later shots show a run in progress.
 
+## 18 Oct 2026 · M6: release preparation, version 1.0.0
+
+**What's in**
+
+- **Version 1.0.0** for the Web and Windows, zipped for itch.io: `Incrementer-1.0.0-web.zip`, `-windows.zip` and `-windows-debug.zip` (the debug build has the F3 debug panel). They're attached to a draft GitHub release, and kept locally in `builds/1.0.0/`.
+- **Fix at the very end of the game:** with every layer maxed, Count per second could pass the largest float and showed "+∞". Rates and the Increment value now stop at the largest float, and a test covers it.
+- **Browser saves:** when the browser won't keep the save (a private window, for example), the status line turns amber and asks the player to back up with Save data.
+- **Release notes:** `CHANGELOG.md`, and `docs/itch-page.md` with the store text, upload and embed settings, screenshot order and a launch checklist.
+- **Cleaner builds:** Godot no longer imports the screenshots in `docs/` or anything in `builds/` (`.gdignore` files), so they can't end up in the game.
+
+**Firmware** near the end of a run: the tree is nearly complete.
+
+![Firmware](screenshots/2026-10-18-m6-01-firmware.png)
+
+**Stats** with the run history.
+
+![Stats](screenshots/2026-10-18-m6-02-stats.png)
+
+**The real ending,** reached by the scripted player in 5 hours 52 minutes with 4 Overflows.
+
+![The ending](screenshots/2026-10-18-m6-03-ending.png)
+
+**Final pacing** (scripted player, 4 clicks per second): first Overflow 49:27, longest wait in the first hour 52 s, ending 5:52. All three are inside the plan's targets, and CI checks them on every push.
+
+**Not checked yet: the Web build in a real browser.** The Chrome I can drive has no WebGL 2, which Godot's Web export needs, so the game stops at the loading screen there. That's a limit of that browser, not the build. The Windows build is the one you've been playing.
+
+**Left for you** (these need your accounts or your judgement):
+
+1. Review and publish the draft GitHub release.
+2. Play the Web build in your own browser: unzip `Incrementer-1.0.0-web.zip`, or upload it to itch.io as a Draft. Start, wait for an autosave, refresh, and check the save is still there.
+3. Create the itch.io page from `docs/itch-page.md`.
+4. Playtest round 2: post in r/incremental_games' Feedback Friday thread, write a launch devlog, and open a feedback thread. Feedback from people playing the M4 balance is still the best test of the pacing.
+
+**Next:** 1.0.x fixes from player feedback.
+
 ## 18 Oct 2026 · M5: look, sound and feel
 
 **What's in**

@@ -36,6 +36,8 @@ Run from the repository root. `G=.tools/godot/Godot_v4.7.2-stable_win64_console.
 | Pacing check (first Overflow) | `$G --headless --path . --script res://tools/sim.gd -- --no-save --minutes=90` |
 | Pacing check (whole game) | `$G --headless --path . --script res://tools/sim.gd -- --no-save --until=ending --minutes=720` |
 | Windows build | `$G --headless --path . --export-release "Windows Desktop" builds/<version>/windows/Incrementer.exe` (one folder per version, so a build someone is playing is never overwritten; templates go in `.tools/godot/editor_data/export_templates/4.7.2.stable/`) |
+| Windows debug build (F3 debug panel) | `$G --headless --path . --export-debug "Windows Desktop" builds/<version>/windows-debug/Incrementer.exe` |
+| Web build | `$G --headless --path . --export-release "Web" builds/<version>/web/index.html` |
 | Play the game | `$G --path .` |
 | Screenshot | `$G --path . --resolution 1280x720 -- --no-save --autoplay=<seconds> --capture=docs/screenshots/<name>.png` |
 | Open the editor | `.tools/godot/Godot_v4.7.2-stable_win64.exe --path . --editor` |
@@ -59,8 +61,11 @@ ui/                main.tscn + main.gd (screen built in code), SchematicView, Re
 tests/             run_tests.gd (runner), lib/ (TestCase, Fixtures), test_*.gd
 tools/             sim.gd (balance simulator), make_sounds.gd (synthesises assets/audio)
 assets/            fonts/ (OFL fonts and licences), audio/ (generated WAVs)
-docs/              PROGRESS.md (progress log), screenshots/
+docs/              PROGRESS.md (progress log), itch-page.md (store page text), screenshots/
+builds/            Exports, one folder per version (git-ignored)
 ```
+
+`docs/` and `builds/` each hold a `.gdignore`, so Godot never imports the screenshots or exported files and they can't end up in a build.
 
 ## Rules that keep the architecture honest
 
@@ -99,6 +104,14 @@ The repo owner follows progress through screenshots. After any visible change:
 ## Art direction
 
 Clean-lined sci-fi: thin glowing lines on a deep blue-black background, panels with corner brackets (`FramePanel`). Colours have fixed meanings (see `ui/palette.gd`): cyan = producing now, violet = survives an Overflow, amber = needs attention, magenta = the Overflow only. Software tiers are polygons where tier *n* has *n* + 2 sides (`Shapes.polygon`). Fonts come from `Fonts`: `body()` for labels, `heading()` for spaced capitals, `mono()` for numbers, `readout()` for big numbers. Everything is drawn in code; there are no sprites. Every effect must respect `Settings.reduced_motion`. Content is locked as of M5: only balance numbers change.
+
+## Releases
+
+1. Bump `config/version` in `project.godot` and add the version to the top of `CHANGELOG.md`.
+2. Run the tests and the whole-game pacing check with `--check`.
+3. Export Web, Windows and Windows debug into `builds/<version>/` (commands above). If an export can't replace a file, someone is playing that build: export to a new folder instead of closing it.
+4. Zip each folder's contents as `builds/<version>/Incrementer-<version>-web.zip`, `-windows.zip` and `-windows-debug.zip`. The Web zip has `index.html` at its root, which is what itch.io expects.
+5. Tag `v<version>`, push the tag, and create the GitHub release as a **draft** with the three zips and the changelog section. The repo owner publishes it and the itch.io page (`docs/itch-page.md`).
 
 ## Git
 
