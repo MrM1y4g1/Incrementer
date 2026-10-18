@@ -4,11 +4,11 @@ An incremental game about a counter inside a forgotten machine. Write software t
 
 Built with **Godot 4.7.2** (GDScript, Compatibility renderer) for the Web and Windows.
 
-![The game after six minutes of play](docs/screenshots/2026-10-18-m1-02-six-minutes.png)
+![A 256-bit run](docs/screenshots/2026-10-18-m5-02-256-bit.png)
 
 ## Status
 
-Milestones **M1 (core loop)**, **M2 (progression)** and **M3 (Overflow and Firmware)** are in. The game is playable from the first click to the V1 ending: eight Software layers, register widths from 8 to 1024 bits, 40 upgrades, 34 achievements, Overclock, the Overflow, Carry, 23 Firmware nodes with autobuyers, save export and import, and offline progress. The late-game pacing is still being balanced (M4).
+Milestones M1 to M5 are done: the core loop, progression, the Overflow and Firmware, the balance pass, and the look, sound and feel. The game is playable from the first click to the V1 ending (about six hours): eight Software layers, register widths from 8 to 1024 bits, 40 upgrades, 34 achievements, Overclock, the Overflow, Carry, 23 Firmware nodes with autobuyers, settings, save export and import, and offline progress. Next is M6, release preparation.
 
 ## Running it
 
@@ -21,3 +21,9 @@ Godot isn't checked in. Put a self-contained copy in `.tools/godot/` as describe
 ```
 
 Contributors and coding agents: start with [AGENTS.md](AGENTS.md).
+
+## Credits
+
+- Fonts: [Barlow Semi Condensed](https://fonts.google.com/specimen/Barlow+Semi+Condensed), [IBM Plex Mono](https://fonts.google.com/specimen/IBM+Plex+Mono) and [Oxanium](https://fonts.google.com/specimen/Oxanium), all under the SIL Open Font License (licences in `assets/fonts/`).
+- Sound and music are synthesised by `tools/make_sounds.gd`.
+- Built with [Godot Engine](https://godotengine.org).

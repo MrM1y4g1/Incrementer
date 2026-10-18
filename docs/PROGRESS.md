@@ -2,6 +2,42 @@
 
 Newest first. Screenshots are captured from the real game at 1280 × 720. The `--autoplay` flag fast-forwards a scripted player, so the later shots show a run in progress.
 
+## 18 Oct 2026 · M5: look, sound and feel
+
+**What's in**
+
+- **The clean-lined sci-fi look** from plan section 4: thin lines on a deep blue-black background, panels with corner brackets, cyan for anything live, violet for permanent things, amber for warnings and magenta only for the Overflow.
+- **Fonts:** Barlow Semi Condensed for labels, IBM Plex Mono for numbers and Oxanium for big readouts. All three use the SIL Open Font License; the licences sit next to them in `assets/fonts/`.
+- **The schematic:** the middle of the screen shows the machine. There is one row per tier, each bought unit is a polygon with tier + 2 sides (Incrementers are triangles, Hypervisors decagons), and pulses of light climb the spine from each layer to the one above. Owned Firmware sits on a violet rail.
+- **The register display** fills up as the run goes on: exact bits for the top 53, a shimmer below float precision, and empty cells above the Count's highest bit. Wide registers stack in rows of 64.
+- **Parts rows explain the chain.** Each row shows what it owns, how fast that grows (the layer above writes new copies) and what it makes, for example "538 (+3.50/s) → 323 Count/s". This answers "why does Loop keep going up?"
+- **Feedback:** +N numbers float up from Increment, rows flash when bought, the register flashes when widened, and an Overflow brings a white flash, a magenta shockwave and a pop-up. Click the register or press Space to increment.
+- **Sound:** click, buy, upgrade, overclock, widen, achievement and Overflow effects, and a 32-second ambient music loop. All of it is synthesised by `tools/make_sounds.gd`, so there's nothing to license.
+- **Settings:** number format (standard, scientific, engineering or bits), music and effect volumes, reduced motion, and the autosave interval. They're stored apart from the save.
+- **Content lock:** from here on only balance numbers change.
+
+**Six minutes in.**
+
+![Six minutes in](screenshots/2026-10-18-m5-01-six-minutes.png)
+
+**A 256-bit run:** every tier running, the register filling.
+
+![256-bit run](screenshots/2026-10-18-m5-02-256-bit.png)
+
+**The Overflow effect.**
+
+![Overflow effect](screenshots/2026-10-18-m5-03-overflow-effect.png)
+
+**Settings.**
+
+![Settings](screenshots/2026-10-18-m5-04-settings.png)
+
+**A smaller window** (1024 × 640) keeps the same layout.
+
+![Smaller window](screenshots/2026-10-18-m5-05-narrow-window.png)
+
+**Next (M6):** release preparation. A Web build checked in a browser, a final Windows build, the itch.io page text and screenshots, and the v1.0.0 tag.
+
 ## 18 Oct 2026 · M4: balance pass
 
 **What changed**

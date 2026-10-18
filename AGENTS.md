@@ -40,22 +40,25 @@ Run from the repository root. `G=.tools/godot/Godot_v4.7.2-stable_win64_console.
 | Screenshot | `$G --path . --resolution 1280x720 -- --no-save --autoplay=<seconds> --capture=docs/screenshots/<name>.png` |
 | Open the editor | `.tools/godot/Godot_v4.7.2-stable_win64.exe --path . --editor` |
 
-Dev flags go after `--`: `--no-save` (never read or write the save), `--autoplay=<seconds>` (fast-forward the scripted player before the first frame), `--open=<views>` (comma-separated: `upgrades`, `stats`, `firmware`, `save`, `overflow`, `ending`, `debug`, `toast`), `--capture=<png>` (save a screenshot after a few frames, then quit). Captures need a real window, so they don't work with `--headless`. In debug builds, **F3** toggles the debug panel.
+Dev flags go after `--`: `--no-save` (never read or write the save or settings), `--mute` (no sound; captures and headless runs are silent anyway), `--autoplay=<seconds>` (fast-forward the scripted player before the first frame), `--open=<views>` (comma-separated: `upgrades`, `stats`, `firmware`, `settings`, `save`, `overflow`, `overflow-fx`, `ending`, `debug`, `toast`), `--capture=<png>` (save a screenshot after a few frames, then quit). Captures need a real window, so they don't work with `--headless`. In debug builds, **F3** toggles the debug panel.
 
 ## Layout
 
 ```
-autoload/          EventBus (signals), ContentDB (loads and checks data), Game (state + 20 Hz tick), SaveManager (JSON saves)
+autoload/          EventBus (signals), Settings (preferences in user://settings.cfg), ContentDB (loads and checks data),
+                   Game (state + 20 Hz tick), SaveManager (JSON saves), Audio (sound effects and music)
 core/              Pure logic: Formulas, Economy, GameState, Content, Achievements, SaveCodec, NumberFormat, AutoPlayer
 data/defs/         Resource classes: LayerDef, UpgradeDef, AchievementDef, FirmwareDef
 data/layers/       One .tres per Software layer: most balance numbers live here
 data/upgrades/     One .tres per upgrade
 data/achievements/ One .tres per achievement
 data/firmware/     One .tres per Firmware node (column = position in the tree)
-ui/                main.tscn + main.gd (screen built in code), LayerRow, UpgradeCard, RegisterDisplay,
-                   StatsPanel, FirmwarePanel, EndingPanel, SavePanel, DebugPanel, Palette, ThemeFactory
+ui/                main.tscn + main.gd (screen built in code), SchematicView, RegisterDisplay, LayerRow, UpgradeCard,
+                   TierIcon, FramePanel, FxLayer, Stats/Firmware/Settings/Ending/Save/Debug panels,
+                   Palette, Fonts, Shapes, ThemeFactory
 tests/             run_tests.gd (runner), lib/ (TestCase, Fixtures), test_*.gd
-tools/             sim.gd (balance simulator)
+tools/             sim.gd (balance simulator), make_sounds.gd (synthesises assets/audio)
+assets/            fonts/ (OFL fonts and licences), audio/ (generated WAVs)
 docs/              PROGRESS.md (progress log), screenshots/
 ```
 
@@ -95,7 +98,7 @@ The repo owner follows progress through screenshots. After any visible change:
 
 ## Art direction
 
-Clean-lined sci-fi: thin glowing lines on a deep blue-black background. Colours have fixed meanings (see `ui/palette.gd`): cyan = producing now, violet = survives an Overflow, amber = needs attention, magenta = the Overflow only. Software tiers will be drawn as polygons where tier *n* has *n* + 2 sides. The current screen is an M1 grey box; the real look arrives in M5.
+Clean-lined sci-fi: thin glowing lines on a deep blue-black background, panels with corner brackets (`FramePanel`). Colours have fixed meanings (see `ui/palette.gd`): cyan = producing now, violet = survives an Overflow, amber = needs attention, magenta = the Overflow only. Software tiers are polygons where tier *n* has *n* + 2 sides (`Shapes.polygon`). Fonts come from `Fonts`: `body()` for labels, `heading()` for spaced capitals, `mono()` for numbers, `readout()` for big numbers. Everything is drawn in code; there are no sprites. Every effect must respect `Settings.reduced_motion`. Content is locked as of M5: only balance numbers change.
 
 ## Git
 
