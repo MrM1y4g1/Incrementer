@@ -2,6 +2,47 @@
 
 Newest first. Screenshots are captured from the real game at 1280 × 720. The `--autoplay` flag fast-forwards a scripted player, so the later shots show a run in progress.
 
+## 18 Oct 2026 · 1.2.0: bad bits
+
+**Your idea:** the register's storage slowly goes bad, and a bad bit has to be fixed before the Count can get past it.
+
+**How it plays:**
+- From the second run on, each widening can map in bad bits among the new bits. On average there's 0.5 more per widening for every Overflow so far, up to 3. Each run places them differently, but the same run always gets the same ones, so the simulator can replay a game exactly.
+- The Count stops just below the lowest bad bit. It turns red with a cross (red is the new colour for damage), pulses, and fills with cyan as it scrubs itself. Repair and Scrub appear on the line under the register, a short fault sound plays, and the first bad bit of a save explains itself.
+- Three ways past, each with a different price:
+  - **Repair:** half the bit's value in Count. Instant, and costs about one bit.
+  - **Scrub:** a parity puzzle. One bit in a small word has flipped; rows and columns marked ODD point at it, and flipping the bit where they cross fixes both. Free, and it takes a few seconds. Words grow from 4×4 to 6×6 for higher bits.
+  - **Wait:** the bit scrubs itself after a minute of holding the Count.
+- New Firmware: ECC memory (scrub in 20 seconds), Spare rows (half as many bad bits) and, late in the game, Self-healing memory (3 seconds).
+- New achievements: Parity check and Fault tolerant.
+- Settings can switch bad bits off. The run log records each block and how it was cleared, so we can see whether players find them fun or a chore.
+
+**Pacing:** a simulated game meets about 33 bad bits. The ending stays at 6 h 14 min, and a player who waits out every bad bit also finishes at 6 h 14 min, after 17 minutes of blocking. While the Count waits, the layers above keep producing, so a run is barely set back. Bad bits are a hazard, not a wall. The simulator now also checks that a waiting player finishes within 8 hours.
+
+**Found on the way:**
+- Firmware nodes with the same price could change order whenever a file was added (Godot's sort isn't stable). That moved cards on the Firmware screen and changed what the scripted player bought first. Ties now sort by id.
+- Pop-ups now wrap long text.
+
+**The first bad bit of a save** explains itself. It's bit 15 of a 32-bit register: Repair costs 16.4 K, or it scrubs itself in 35 seconds. Another bad bit waits at 17.
+
+![The first bad bit](screenshots/2026-10-18-v120-05-first-bad-bit.png)
+
+**The scrub puzzle:** row 3 and column 3 are odd, so the flipped bit is where they cross.
+
+![Scrubbing a bad bit](screenshots/2026-10-18-v120-02-scrub.png)
+
+**Late in the game:** two bad bits side by side in a 256-bit register. ECC memory makes them scrub in 20 seconds.
+
+![Bad bits late in the game](screenshots/2026-10-18-v120-03-late-bad-bit.png)
+
+**Firmware** gains three nodes. Self-healing memory is in the last column; ECC memory and Spare rows are further down the second and third.
+
+![Firmware](screenshots/2026-10-18-v120-04-firmware.png)
+
+**Settings** has the switch:
+
+![Settings](screenshots/2026-10-18-v120-06-settings.png)
+
 ## 18 Oct 2026 · 1.1.0: a start screen, Start over, and a run log
 
 **What you asked for:** a Start over button, perhaps a start screen; no offline progress, with the game only running while it's open; and a record of when the player bought things, for studying runs, without the game sending any data.

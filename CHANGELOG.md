@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.2.0 · 18 October 2026
+
+**New: bad bits.** From the second run on, the machine's storage starts going bad.
+- Each time you widen the register, bad bits can appear among the new bits. There are more as the machine ages, Overflow by Overflow, up to three per widening. Each run places them differently.
+- The Count can't pass a bad bit. Clear it in one of three ways:
+  - **Repair:** costs half the bit's value in Count.
+  - **Scrub:** solve a small parity puzzle. One bit in a word has flipped, and the odd row and odd column show where. It's free.
+  - **Wait:** the bit scrubs itself after a minute of holding the Count.
+- Three new Firmware nodes: ECC memory (bad bits scrub themselves in 20 seconds), Spare rows (half as many bad bits) and Self-healing memory (3 seconds).
+- Two new achievements: Parity check (scrub a bad bit) and Fault tolerant (clear 25 bad bits).
+- Bad bits are red, a new colour that means damage. The one holding the Count pulses and fills with cyan as it scrubs. Repair and Scrub appear under the register, a sound plays when a bad bit blocks the Count, and the first one explains itself. Bad bits can be switched off in Settings.
+- The run log records when each bad bit blocked the Count and how it was cleared.
+- In the simulator, a whole game meets about 33 bad bits. The ending stays at about 6 h 14 min whichever way you clear them, because the layers above keep producing while the Count waits.
+
+**Fixed**
+- Firmware nodes and upgrades with the same price now always appear in the same order.
+- Pop-ups wrap long text instead of running off the screen.
+- Saves move to format 5. Like 1.1.0's format 4, older builds can't read it, so don't go back to an older build after playing this one.
+
 ## 1.1.0 · 18 October 2026
 
 **New**
