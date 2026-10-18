@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.1 · 18 October 2026
+
+- The screen stays at 1280 × 720. It's drawn at its real size in the middle of the window and never enlarged; it only shrinks when the window is too small to hold it. 1.2.1 scaled it to fit, which zoomed it in on large screens.
+- The Widen and Overclock buttons say "TO" instead of an arrow the game's font couldn't draw. On Windows the arrow came from a different font, and in the browser it showed as an empty box.
+- The Overflow flash covers the whole window, not just the game.
+
 ## 1.3.0 · 18 October 2026
 
 - **New music.** A dark, slow synth piece in F minor at 88 BPM, about two minutes long. It opens with a filtered pad over deep bass, builds with a bass line, an echoing arpeggio and half-time drums, brings in a soft lead, breaks down and returns, then loops. Like the rest of the game's audio, it's synthesised in code.

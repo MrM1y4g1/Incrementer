@@ -2,6 +2,24 @@
 
 Newest first. Screenshots are captured from the real game at 1280 × 720. The `--autoplay` flag fast-forwards a scripted player, so the later shots show a run in progress.
 
+## 18 Oct 2026 · 1.3.1: the real size, and no missing glyphs
+
+**What you found:** the game zoomed to fit the window instead of keeping its size, and the symbol between OVERCLOCK and the number looked wrong.
+
+**The size:** in 1.2.1 I locked the layout but let it scale, so on a big screen everything was enlarged. Now the screen is exactly 1280 × 720 pixels, the size of the screenshots, in the middle of the window. It's never enlarged, and it shrinks only when the window is smaller than 1280 × 720, so nothing is ever cut off.
+
+**The symbol:** it was an arrow (→). The fonts the buttons use, Barlow and Oxanium, don't have one. On Windows, Godot borrowed it from a system font, so it looked out of place; in the browser, which has no fonts to borrow from, it was an empty box. The buttons now read WIDEN TO 64-BIT and OVERCLOCK TO 1.27 Hz. A new test checks every special character in the UI against the fonts, so this can't come back unnoticed. The arrows in the parts list stay, because IBM Plex Mono, which draws that list, has them.
+
+The Overflow flash now covers the whole window, not just the game.
+
+**A 1920 × 1080 window:** the game at its real size, centred.
+
+![A big window](screenshots/2026-10-18-v131-01-big-window.png)
+
+**A 1000 × 600 window:** too small for 1280 × 720, so it shrinks to fit.
+
+![A small window](screenshots/2026-10-18-v131-02-small-window.png)
+
 ## 18 Oct 2026 · 1.3.0: new music
 
 **What you asked for:** background music in the style of a reference track you dropped in `tmp/`. That track is from a commercial soundtrack, so the game can't use it or copy from it, and `tmp/` is now ignored by git so it can't be pushed by accident. I used it only as a style guide, and you approved the result by ear before this release.
