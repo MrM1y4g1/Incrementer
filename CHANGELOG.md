@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.1.0 · 18 October 2026
+
+**New**
+- **A start screen**, with the game's name over a ticking 16-bit counter. Continue shows your register width, Overflows and play time; a new save shows Start. New game, Settings and Quit (not in the browser) sit below.
+- **Start over**, in Save data and as New game on the start screen. The amber confirmation offers Copy save first. The old game is also written to `save-before-start-over.json` in the save folder.
+- **A run log.** The save keeps a list of what you did and when, by play time: sessions, the first unit of each layer per run, upgrades, widening, Overflows, Firmware, achievements, autobuyer switches and the ending. Nothing is sent anywhere. **Save data → Copy run log** copies it as CSV if you want to share it.
+
+**Changed**
+- **The machine only runs while the game is open.** There's no offline progress and no "While you were away" report. A minimised window or a background browser tab still counts as open.
+- The Watchdog timer Firmware node, which used to extend offline progress, now gives Count per second ×2 at the same price. The simulated ending moves from 6 h 19 min to 6 h 14 min.
+
+**Fixed**
+- After the ending, the lifetime "Total counted" stat could pass the largest number the game can hold and be saved as infinity. It now stops at 1.80e308, and saves that already hold infinity load as 1.80e308.
+- The game no longer saves over a save from a newer version that it can't read. It keeps saving off and says so in the status bar. Saves move to format 4, which 1.0.x can't read, so don't open a 1.0.x build after playing 1.1.0: it would start a new game and save over yours.
+
 ## 1.0.3 · 18 October 2026
 
 Balance from the second playtest: the game could be finished in under 2 hours.

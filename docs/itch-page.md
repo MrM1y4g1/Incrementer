@@ -1,13 +1,13 @@
 # itch.io page
 
-Everything needed to publish Incrementer 1.0.3 on itch.io. Copy the text, upload the files, set the options.
+Everything needed to publish Incrementer 1.1.0 on itch.io. Copy the text, upload the files, set the options.
 
 ## Upload
 
-| File (from `builds/1.0.3/`) | itch.io setting |
+| File (from `builds/1.1.0/`) | itch.io setting |
 |---|---|
-| `Incrementer-1.0.3-web.zip` | Kind: HTML. Tick **"This file will be played in the browser"**. |
-| `Incrementer-1.0.3-windows.zip` | Platform: Windows. |
+| `Incrementer-1.1.0-web.zip` | Kind: HTML. Tick **"This file will be played in the browser"**. |
+| `Incrementer-1.1.0-windows.zip` | Platform: Windows. |
 
 **Embed options:** viewport **1280 × 720**, tick **Fullscreen button**, leave **SharedArrayBuffer support** off (the Web build is single-threaded and doesn't need it). Mobile friendly: no.
 
@@ -34,12 +34,12 @@ Fill a 1024-bit register, 1.80 × 10^308 (the largest number a 64-bit float can 
 - A register from 8 to 1024 bits, shown bit by bit
 - 40 upgrades, 34 achievements and Overclock
 - The Overflow, Carry and 23 Firmware nodes, including autobuyers
-- About six hours to the ending, with offline progress while you're away
+- About six hours to the ending. The machine runs while the game is open
 - Synthesised sound and music, reduced-motion and number-format settings
 
 **Controls:** mouse. Click the register or press **Space** to increment.
 
-**Saves:** the game saves automatically.
+**Saves:** the game saves automatically. Save data can copy your save as text, start over, or copy a run log of what you bought and when; nothing is ever sent anywhere.
 - In the browser, saves live in your browser's storage. Private windows, or clearing site data, can lose them, so use **Save data → Copy** now and then to keep a backup.
 - On Windows, saves live in `%APPDATA%\Godot\app_userdata\Incrementer`.
 - Windows may show a SmartScreen warning because the game isn't code-signed: choose **More info → Run anyway**.
@@ -55,6 +55,7 @@ Upload these from `docs/screenshots/`, in this order:
 3. `2026-10-18-m5-03-overflow-effect.png`: the Overflow
 4. `2026-10-18-m6-01-firmware.png`: Firmware
 5. `2026-10-18-m6-03-ending.png`: the ending
+6. `2026-10-18-v110-01-start-screen.png`: the start screen
 
 ## Launch checklist
 

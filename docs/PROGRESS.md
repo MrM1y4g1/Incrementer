@@ -2,6 +2,33 @@
 
 Newest first. Screenshots are captured from the real game at 1280 × 720. The `--autoplay` flag fast-forwards a scripted player, so the later shots show a run in progress.
 
+## 18 Oct 2026 · 1.1.0: a start screen, Start over, and a run log
+
+**What you asked for:** a Start over button, perhaps a start screen; no offline progress, with the game only running while it's open; and a record of when the player bought things, for studying runs, without the game sending any data.
+
+- **Start screen.** The game opens on its name over a 16-bit counter that ticks over and wraps, like the Count does. Continue shows what the save holds; a fresh save shows Start. Settings opens over it; Quit is hidden in the browser, where there's nothing to quit to.
+- **Start over.** It's in Save data, and on the start screen as New game. The confirmation is amber, the colour that asks for attention, and offers Copy save first. The old game is also written to `save-before-start-over.json`.
+- **Online only.** A save now carries on from where it was saved. Gaps while the game is open, such as a background tab, are still caught up, because the game was running. The Watchdog timer Firmware node lost its job (a longer offline cap), so it now gives ×2 Count per second.
+- **Run log.** Every purchase that shapes a run's pace goes into the save with its play time: about 560 events for the scripted player's whole game. Clock levels are left out, because there are over a hundred a run. **Save data → Copy run log** gives a CSV. The simulator can write the same CSV (`tools/sim.gd … --log=builds/sim-run-log.csv`), so a player's log can be compared with the scripted one line by line.
+
+**Found while testing, both fixed:**
+- Your save showed the lifetime "Total counted" stat saved as `1e99999`. That's infinity: after the ending, every tick added the largest float to it. It's harmless today because nothing multiplies it, but it broke the rule that numbers stay finite. It's capped now, and loading repairs it.
+- Saves move to format 4. A 1.0.x build can't read that, so it would start a new game and save over yours. From 1.1.0 on, the game refuses to save over a newer save. The old builds can't be fixed, so **don't open a 1.0.x build after playing 1.1.0**.
+
+**The start screen**, on a new save and with a game in progress:
+
+![Start screen](screenshots/2026-10-18-v110-01-start-screen.png)
+
+![Start screen with Continue](screenshots/2026-10-18-v110-02-continue.png)
+
+**Start over** asks first, and offers a copy of the save:
+
+![Start over confirmation](screenshots/2026-10-18-v110-03-start-over.png)
+
+**Save data** with Copy run log and Start over:
+
+![Save data](screenshots/2026-10-18-v110-04-save-data.png)
+
 ## 18 Oct 2026 · 1.0.3: six hours again
 
 **What you found:** you reached the ending in under 2 hours, against a target of about 6. The simulator's scripted player only Overflowed once its register was full at the widest width its Firmware allowed, and on that schedule the game took 6 h 23 min. Real players Overflow when a run slows down. A simulated player who did that finished in **1 h 49 min**, close to your time. Count pays for every layer, so the Carry bonus roughly tripled in effect. Each run reached twice the bits of the run before in about 10 minutes, and the Wide bus prices never held anyone back.
