@@ -1,0 +1,83 @@
+name: GitHub Pages
+
+# Builds the Web export and publishes it at https://mrm1y4g1.github.io/Incrementer/ whenever a version is
+# tagged, so the site always has the latest release. It can also be started by hand from the Actions tab.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time. A newer tag waits for the one in progress instead of cancelling it.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      GODOT_VERSION: 4.7.2
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download Godot
+        run: |
+          base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
+          zip="Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          curl -sSfLO "$base/$zip"
+          curl -sSfLO "$base/SHA512-SUMS.txt"
+          grep " $zip\$" SHA512-SUMS.txt | sha512sum -c -
+          unzip -q "$zip"
+          mv "Godot_v${GODOT_VERSION}-stable_linux.x86_64" godot
+          chmod +x godot
+
+      - name: Restore the Web export template
+        id: templates
+        uses: actions/cache@v6
+        with:
+          path: ~/.local/share/godot/export_templates/${{ env.GODOT_VERSION }}.stable
+          key: godot-web-template-${{ env.GODOT_VERSION }}
+
+      - name: Download the Web export template
+        if: steps.templates.outputs.cache-hit != 'true'
+        run: |
+          base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
+          tpz="Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          curl -sSfLO "$base/$tpz"
+          grep " $tpz\$" SHA512-SUMS.txt | sha512sum -c -
+          dir="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          mkdir -p "$dir"
+          # The full set is over a gigabyte. The Web preset has threads off, so it needs only this template.
+          unzip -j -q "$tpz" templates/web_nothreads_release.zip templates/version.txt -d "$dir"
+          rm "$tpz"
+
+      - name: Import project
+        run: ./godot --headless --path . --import
+
+      - name: Run tests
+        run: ./godot --headless --path . --script res://tests/run_tests.gd -- --no-save
+
+      - name: Export for the Web
+        run: |
+          mkdir -p site
+          ./godot --headless --path . --export-release "Web" site/index.html
+          test -s site/index.html && test -s site/index.wasm && test -s site/index.pck
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

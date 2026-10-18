@@ -12,7 +12,9 @@ Built with **Godot 4.7.2** (GDScript, Compatibility renderer) for the Web and Wi
 
 ## Playing it
 
-Download a build from the [releases page](https://github.com/MrM1y4g1/Incrementer/releases):
+**Play in your browser:** https://mrm1y4g1.github.io/Incrementer/ (needs WebGL 2). The site updates with every release.
+
+Or download a build from the [releases page](https://github.com/MrM1y4g1/Incrementer/releases):
 
 - **Windows:** unzip `Incrementer-1.2.0-windows.zip` and run `Incrementer.exe`. Windows may show a SmartScreen warning because the game isn't code-signed: choose **More info → Run anyway**. Saves live in `%APPDATA%\Godot\app_userdata\Incrementer`.
 - **Web:** `Incrementer-1.2.0-web.zip` is ready for itch.io. To play it locally, serve the unzipped folder with any static web server and open `index.html`; it needs a browser with WebGL 2. Browser saves can be lost with site data, so use **Save data → Copy** to keep a backup.

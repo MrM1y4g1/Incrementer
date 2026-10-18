@@ -117,6 +117,7 @@ Clean-lined sci-fi: thin glowing lines on a deep blue-black background, panels w
 3. Export Web, Windows and Windows debug into `builds/<version>/` (commands above). If an export can't replace a file, someone is playing that build: export to a new folder instead of closing it.
 4. Zip each folder's contents as `builds/<version>/Incrementer-<version>-web.zip`, `-windows.zip` and `-windows-debug.zip`. The Web zip has `index.html` at its root, which is what itch.io expects.
 5. Tag `v<version>`, push the tag, and create the GitHub release as a **draft** with the three zips and the changelog section. The repo owner publishes it and the itch.io page (`docs/itch-page.md`).
+6. Pushing the tag also runs `.github/workflows/pages.yml`, which tests, exports the Web build in CI and publishes it at https://mrm1y4g1.github.io/Incrementer/. Check that the run succeeds. Only `v*` tags may deploy to the `github-pages` environment, and pushes to `main` never do. To redeploy without a new tag, run the workflow by hand.
 
 ## Git
 
