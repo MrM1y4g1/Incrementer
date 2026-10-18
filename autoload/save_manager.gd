@@ -70,8 +70,19 @@ func load_game() -> void:
 	var state: GameState = loaded["state"]
 	var elapsed := Time.get_unix_time_from_system() - float(loaded["saved_at"])
 	offline_seconds = clampf(elapsed, 0.0, Economy.OFFLINE_CAP_SECONDS)
-	offline_gain = Economy.catch_up(state, ContentDB.layers, elapsed)
+	offline_gain = Economy.catch_up(state, ContentDB.content, elapsed)
 	Game.replace_state(state)
+
+
+## Deletes the save and its backup and starts a new game. Used by the debug panel.
+func wipe() -> void:
+	for path: String in [SAVE_PATH, BACKUP_PATH, TEMP_PATH]:
+		if FileAccess.file_exists(path):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	Game.replace_state(GameState.new())
+	offline_seconds = 0.0
+	offline_gain = 0.0
+	last_saved_unix = 0.0
 
 
 func status_text() -> String:

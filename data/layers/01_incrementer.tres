@@ -9,6 +9,6 @@ display_name = "Incrementer"
 plural_name = "Incrementers"
 tier = 1
 base_cost = 10.0
-cost_growth = 1.2
+cost_growth = 1.25
 base_rate = 0.5
 unlock_bits = 8

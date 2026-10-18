@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="UpgradeDef" format=3]
+
+[ext_resource type="Script" path="res://data/defs/upgrade_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"service_10"
+display_name = "Health checks"
+effect = 0
+layer_tier = 6
+value = 2.0
+cost = 20500000000000000.0
+requires_bits = 64
+requires_tier = 6
+requires_bought = 10

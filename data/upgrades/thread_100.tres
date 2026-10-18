@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="UpgradeDef" format=3]
+
+[ext_resource type="Script" path="res://data/defs/upgrade_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"thread_100"
+display_name = "Core pinning"
+effect = 0
+layer_tier = 4
+value = 2.0
+cost = 2.05e+22
+requires_bits = 32
+requires_tier = 4
+requires_bought = 100

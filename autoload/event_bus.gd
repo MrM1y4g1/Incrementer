@@ -7,3 +7,12 @@ signal layer_bought(index: int, count: int)
 
 @warning_ignore("unused_signal")
 signal register_widened(bits: int)
+
+@warning_ignore("unused_signal")
+signal upgrade_bought(id: StringName)
+
+@warning_ignore("unused_signal")
+signal clock_raised(level: int)
+
+@warning_ignore("unused_signal")
+signal achievement_unlocked(id: StringName)

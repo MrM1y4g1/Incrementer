@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="AchievementDef" format=3]
+
+[ext_resource type="Script" path="res://data/defs/achievement_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"repetitive_strain"
+display_name = "Repetitive strain"
+description = "Click Increment 10,000 times"
+condition = 4
+layer_tier = 0
+threshold = 10000.0

@@ -2,8 +2,12 @@ class_name SaveCodec
 extends RefCounted
 ## Turns a GameState into save text and back. Each change to the save format bumps VERSION
 ## and adds one migration step, so old saves keep loading.
+##
+## Version history:
+##   1  M1: Count, register, layers, clicks, play time
+##   2  M2: adds clock level, upgrades, achievements and total Count produced
 
-const VERSION := 1
+const VERSION := 2
 
 
 static func encode(state: GameState, saved_at: float) -> String:
@@ -32,7 +36,22 @@ static func decode(text: String) -> Dictionary:
 static func migrate(payload: Dictionary, from_version: int) -> Dictionary:
 	var version := from_version
 	while version < VERSION:
-		# Add steps here as the format changes, for example:
-		# if version == 1: payload = _v1_to_v2(payload)
+		if version == 1:
+			payload = _v1_to_v2(payload)
 		version += 1
+	payload["version"] = VERSION
+	return payload
+
+
+static func _v1_to_v2(payload: Dictionary) -> Dictionary:
+	var state_data: Variant = payload.get("state")
+	if typeof(state_data) != TYPE_DICTIONARY:
+		return payload
+	var state: Dictionary = state_data
+	state["clock_level"] = 0
+	state["upgrades"] = []
+	state["achievements"] = []
+	# Version 1 didn't track lifetime production; the peak Count is the best lower bound.
+	state["total_produced"] = state.get("peak_count", 0.0)
+	payload["state"] = state
 	return payload

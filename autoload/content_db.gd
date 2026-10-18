@@ -1,10 +1,15 @@
 extends Node
-## Loads every content definition once at startup. Other code reads `ContentDB.layers`.
+## Loads every content definition once at startup and checks it. Other code reads `ContentDB.content`.
+## Broken content (duplicate ids, missing layers) stops a debug build with a clear error.
 
-const LAYER_DIR := "res://data/layers"
+const ROOT := "res://data"
 
-var layers: Array[LayerDef] = []
+var content: Content
 
 
 func _init() -> void:
-	layers = ContentLoader.load_layers(LAYER_DIR)
+	content = Content.load_from(ROOT)
+	var errors := content.validate()
+	for error: String in errors:
+		push_error("Content: " + error)
+	assert(errors.is_empty(), "res://data has %d content problems; see the errors above." % errors.size())

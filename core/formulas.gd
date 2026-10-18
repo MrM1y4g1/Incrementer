@@ -8,7 +8,13 @@ const REGISTER_WIDTHS: Array[int] = [8, 16, 32, 64, 128, 256, 512, 1024]
 ## Widening the register costs this share of a full register.
 const WIDEN_COST_SHARE := 0.75
 ## Each layer's output doubles every time this many units of it have been bought.
-const MILESTONE_EVERY := 20
+const MILESTONE_EVERY := 40
+## Every unlocked achievement adds this share to all output.
+const ACHIEVEMENT_BONUS := 0.01
+## The clock: each level multiplies all output by CLOCK_STEP and costs CLOCK_COST_GROWTH times the last.
+const CLOCK_BASE_COST := 1000.0
+const CLOCK_COST_GROWTH := 100.0
+const CLOCK_STEP := 1.125
 
 
 ## Price of the next single unit.
@@ -46,6 +52,23 @@ static func register_cap(bits: int) -> float:
 
 static func widen_cost(bits: int) -> float:
 	return floor(WIDEN_COST_SHARE * (register_cap(bits) + 1.0))
+
+
+## The narrowest register that can hold `amount`, or -1 if none can.
+static func width_for(amount: float) -> int:
+	for bits: int in REGISTER_WIDTHS:
+		if register_cap(bits) >= amount:
+			return bits
+	return -1
+
+
+static func clock_cost(level: int) -> float:
+	return CLOCK_BASE_COST * pow(CLOCK_COST_GROWTH, level)
+
+
+## Output multiplier from the clock. Shown to the player as a clock speed in hertz.
+static func clock_multiplier(level: int) -> float:
+	return pow(CLOCK_STEP, level)
 
 
 ## The next register width, or -1 at the top of the ladder.

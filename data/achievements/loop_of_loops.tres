@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="AchievementDef" format=3]
+
+[ext_resource type="Script" path="res://data/defs/achievement_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"loop_of_loops"
+display_name = "Loop of loops"
+description = "Buy 100 Loops"
+condition = 3
+layer_tier = 2
+threshold = 100.0

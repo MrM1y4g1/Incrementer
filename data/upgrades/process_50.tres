@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="UpgradeDef" format=3]
+
+[ext_resource type="Script" path="res://data/defs/upgrade_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"process_50"
+display_name = "Process pools"
+effect = 0
+layer_tier = 5
+value = 2.0
+cost = 1010000000000000000.0
+requires_bits = 32
+requires_tier = 5
+requires_bought = 50

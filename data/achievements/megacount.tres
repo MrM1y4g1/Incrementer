@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="AchievementDef" format=3]
+
+[ext_resource type="Script" path="res://data/defs/achievement_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"megacount"
+display_name = "Megacount"
+description = "Reach a Count of 1 million"
+condition = 0
+layer_tier = 0
+threshold = 1000000.0

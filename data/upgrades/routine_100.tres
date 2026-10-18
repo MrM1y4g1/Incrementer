@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="UpgradeDef" format=3]
+
+[ext_resource type="Script" path="res://data/defs/upgrade_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"routine_100"
+display_name = "Link-time optimisation"
+effect = 0
+layer_tier = 3
+value = 2.0
+cost = 5400000000000000000.0
+requires_bits = 16
+requires_tier = 3
+requires_bought = 100

@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="AchievementDef" format=3]
+
+[ext_resource type="Script" path="res://data/defs/achievement_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"two_bytes"
+display_name = "Two bytes"
+description = "Widen the register to 16 bits"
+condition = 1
+layer_tier = 0
+threshold = 16.0
