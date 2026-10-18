@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.1 · 18 October 2026
+
+- The screen keeps the layout of the screenshots. It scales evenly to fit the window or browser and fills any spare space with the background colour, instead of stretching the panels to fill a wider or taller window.
+
 ## 1.2.0 · 18 October 2026
 
 **New: bad bits.** From the second run on, the machine's storage starts going bad.

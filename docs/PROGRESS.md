@@ -2,6 +2,18 @@
 
 Newest first. Screenshots are captured from the real game at 1280 × 720. The `--autoplay` flag fast-forwards a scripted player, so the later shots show a run in progress.
 
+## 18 Oct 2026 · 1.2.1: one layout at every size
+
+**What you found:** the game reshaped itself to the window. The screen already scaled with the window, but it was set to fill any extra width or height with more layout, so a wide window stretched the register and left the middle panel half empty.
+
+**The fix:** the layout is now always the 1280 × 720 one from the screenshots. It scales evenly to fit the window or the browser, and any spare space on the sides or at the top and bottom shows the background colour. Text is still drawn at the window's real resolution, so it stays sharp when scaled up.
+
+**The same moment in a 2000 × 900 window,** before and after. The second image is only the game area; the window shows dark bars either side of it.
+
+![Before: stretched](screenshots/2026-10-18-v121-01-wide-before.png)
+
+![After: the screenshot layout, scaled](screenshots/2026-10-18-v121-02-wide-after.png)
+
 ## 18 Oct 2026 · The game on GitHub Pages
 
 The Web build is live at **https://mrm1y4g1.github.io/Incrementer/**. A new workflow (`.github/workflows/pages.yml`) runs the tests, exports the Web build in CI and deploys it whenever a version is tagged, so the site always has the latest release. It can also be run by hand from the Actions tab. The first deployment is 1.2.0.
