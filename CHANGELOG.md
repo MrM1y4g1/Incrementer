@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.2 · 18 October 2026
+
+- The Count panel keeps its width. Once numbers reached e-notation, the line under Count per second grew too long and the panel kept changing width, pushing the register panel left and right. The Carry details now have their own line, in violet, and any text too long for the panel ends in "…" instead of widening it.
+- Long lines in the parts list end in "…" instead of being cut off mid-character.
+
 ## 1.0.1 · 18 October 2026
 
 Balance and clarity fixes from the first playtest of 1.0.0.

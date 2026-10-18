@@ -2,6 +2,16 @@
 
 Newest first. Screenshots are captured from the real game at 1280 × 720. The `--autoplay` flag fast-forwards a scripted player, so the later shots show a run in progress.
 
+## 18 Oct 2026 · 1.0.2: a steady Count panel
+
+**What you found:** once the numbers reached e-notation, the top-right panel kept changing width. The clock line under Count per second was the cause: a Godot label asks for the full width of its text, so whenever that line outgrew the panel, the panel widened and squeezed the register.
+
+**The fix:** the Count panel's labels clip their text, so the panel stays at its set width whatever the numbers do. The Carry bonus and unspent Carry moved to a line of their own, in violet like everything else that survives an Overflow, so nothing needs cutting short in practice. Long lines in the parts list now end in "…" instead of stopping mid-character.
+
+**Late in the run to 512 bits:** e-numbers everywhere, and the panels keep their sizes.
+
+![E-numbers late in the game](screenshots/2026-10-18-m6-06-e-numbers.png)
+
 ## 18 Oct 2026 · 1.0.1: the Carry ripple
 
 **What you found:** after an Overflow, buying one Incrementer jumped straight to hundreds of millions per second, and four minutes into the new run the Count was at 9 Qi per second. Nothing from the old run carried over. The cause was the Carry bonus: Count per second × (1 + Carry earned)^12.5, which is ×920 K from just 2 Carry. Count pays for every layer, so a bonus that size snowballed through purchases, and the scripted player was back at 64 bits 6 seconds into its second run. Limiting the bonus by register width didn't help: even ×16 on an 8-bit register snowballed, and the second run was still back at 64 bits in 23 seconds.
