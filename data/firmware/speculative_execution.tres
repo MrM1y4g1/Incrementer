@@ -6,9 +6,9 @@
 script = ExtResource("1_def")
 id = &"speculative_execution"
 display_name = "Speculative execution"
-description = "The ×2 milestone comes every 20 units bought"
+description = "The ×2 milestone comes every 28 units bought"
 effect = 10
-value = 20.0
+value = 28.0
 layer_tier = 0
 cost = 1000000.0
 requires = PackedStringArray("superscalar")

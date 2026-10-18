@@ -6,9 +6,9 @@
 script = ExtResource("1_def")
 id = &"pipelining"
 display_name = "Pipelining"
-description = "The ×2 milestone comes every 32 units bought, not 40"
+description = "The ×2 milestone comes every 36 units bought, not 40"
 effect = 10
-value = 32.0
+value = 36.0
 layer_tier = 0
 cost = 24.0
 requires = PackedStringArray("microcode")

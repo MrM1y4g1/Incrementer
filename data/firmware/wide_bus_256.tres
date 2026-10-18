@@ -10,6 +10,6 @@ description = "Registers can widen to 256 bits"
 effect = 0
 value = 256.0
 layer_tier = 0
-cost = 64.0
+cost = 32.0
 requires = PackedStringArray("wide_bus_128")
 column = 2

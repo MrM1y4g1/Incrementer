@@ -6,9 +6,9 @@
 script = ExtResource("1_def")
 id = &"superscalar"
 display_name = "Superscalar"
-description = "The ×2 milestone comes every 25 units bought"
+description = "The ×2 milestone comes every 32 units bought"
 effect = 10
-value = 25.0
+value = 32.0
 layer_tier = 0
 cost = 2000.0
 requires = PackedStringArray("pipelining")

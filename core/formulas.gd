@@ -22,7 +22,7 @@ const CARRY_BASE_BITS := 48.0
 ## Count per second × (1 + Carry earned)^CARRY_BONUS_POWER. Carry grows exponentially with the bits a run
 ## reaches, so this power law adds about 32 bits per doubling of Carry: enough for each run to reach
 ## roughly twice the bits of the run before.
-const CARRY_BONUS_POWER := 10.0
+const CARRY_BONUS_POWER := 12.5
 ## Multipliers stay below this so they never become INF, because INF × 0 would be NaN.
 const MAX_MULTIPLIER := 1e300
 
