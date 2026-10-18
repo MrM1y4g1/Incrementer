@@ -2,6 +2,32 @@
 
 Newest first. Screenshots are captured from the real game at 1280 × 720. The `--autoplay` flag fast-forwards a scripted player, so the later shots show a run in progress.
 
+## 18 Oct 2026 · 1.3.0: new music
+
+**What you asked for:** background music in the style of a reference track you dropped in `tmp/`. That track is from a commercial soundtrack, so the game can't use it or copy from it, and `tmp/` is now ignored by git so it can't be pushed by accident. I used it only as a style guide, and you approved the result by ear before this release.
+
+**The new piece** is original and synthesised in `tools/make_sounds.gd`, like every other sound: F minor at 88 BPM, 48 bars (2 min 11 s), looping.
+- **Bars 1–8:** a dark pad over sub-bass, its filter slowly opening.
+- **Bars 9–16:** a bass line, an echoing arpeggio and the kick come in.
+- **Bars 17–32:** half-time drums and a soft lead melody.
+- **Bars 33–40:** a breakdown, then a noise riser.
+- **Bars 41–48:** the return, winding down into the intro.
+
+The chords are Fm7, D♭maj7, A♭ and B♭m7, two bars each.
+
+**Matched by measurement**, since I can't listen. I decoded both tracks and compared them:
+
+| | Reference | New music |
+|---|---|---|
+| Tempo | 87.5 BPM | 88 BPM |
+| Key | F minor / A♭ | F minor / A♭ |
+| Energy below 60 Hz / 60–250 Hz / 250 Hz–2 kHz | 36% / 47% / 15% | 32% / 44% / 24% |
+| Shape | quiet start, build, breakdown, return | the same |
+
+The first version had far too much deep sub-bass (73% below 60 Hz) and a pad shimmer that pulsed off the beat. Both were fixed before you heard it.
+
+**A bug fixed on the way:** the old music's loop end was set from the size of the audio data, which is wrong once the import compresses it, so the loop cut off after a few seconds. The loop is now set in `music.wav.import`.
+
 ## 18 Oct 2026 · 1.2.2: sound in the browser
 
 **What you found:** no sound in the browser.

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.0 · 18 October 2026
+
+- **New music.** A dark, slow synth piece in F minor at 88 BPM, about two minutes long. It opens with a filtered pad over deep bass, builds with a bass line, an echoing arpeggio and half-time drums, brings in a soft lead, breaks down and returns, then loops. Like the rest of the game's audio, it's synthesised in code.
+- The music now loops over the whole track. Before, the loop was set from the size of the compressed audio and cut off after a few seconds.
+
 ## 1.2.2 · 18 October 2026
 
 - Sound works in the browser. The browser version was silent: the Music and Sound effects channels were created while the game started, which works on Windows, but browsers only play through channels that exist from the start. They're now set up before the game starts.
