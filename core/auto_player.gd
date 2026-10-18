@@ -8,11 +8,20 @@ extends RefCounted
 ## While saving for a wider register, only purchases cheaper than this share of its cost are allowed.
 const SPEND_SHARE_WHILE_SAVING := 0.1
 
+## How the scripted player clears a bad bit that holds the Count: pay Count, solve the puzzle at once,
+## or wait for it to scrub itself.
+enum Fix { REPAIR, SCRUB, WAIT }
 
-static func play(state: GameState, content: Content, seconds: float, step: float = 0.25, clicks_per_second: float = 4.0) -> void:
+
+static func play(state: GameState, content: Content, seconds: float, step: float = 0.25, clicks_per_second: float = 4.0, fix: Fix = Fix.REPAIR) -> void:
 	var elapsed := 0.0
 	var clicks := 0.0
 	while elapsed < seconds:
+		if Economy.is_blocked(state):
+			if fix == Fix.REPAIR:
+				Economy.repair(state)
+			elif fix == Fix.SCRUB:
+				Economy.scrub(state)
 		clicks += clicks_per_second * step
 		while clicks >= 1.0:
 			Economy.click(state, content)

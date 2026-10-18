@@ -14,6 +14,10 @@ enum Condition {
 	OVERFLOWS,
 	TOTAL_CARRY,
 	ENDED,
+	## Bad bits scrubbed with the parity puzzle.
+	FAULTS_SCRUBBED,
+	## Bad bits cleared in any way.
+	FAULTS_CLEARED,
 }
 
 @export var id: StringName = &""

@@ -17,7 +17,8 @@ const AUTOBUY_SPEND_SHARE := 0.1
 # --- Production -----------------------------------------------------------------
 
 ## Runs production for `seconds`. Every layer adds to the layer below it; layer 1 adds to the Count.
-## All layers use their amounts from the start of the step.
+## All layers use their amounts from the start of the step. A bad bit holding the Count scrubs itself
+## as the time passes.
 static func advance(state: GameState, content: Content, seconds: float) -> void:
 	if seconds <= 0.0:
 		return
@@ -27,6 +28,7 @@ static func advance(state: GameState, content: Content, seconds: float) -> void:
 		state.layer_amount[i - 1] = minf(Formulas.MAX_FLOAT, state.layer_amount[i - 1] + start[i] * layer_rate(state, content, i) * seconds)
 	if layer_count > 0:
 		add_count(state, start[0] * layer_rate(state, content, 0) * seconds)
+	_wait_out_fault(state, seconds)
 
 
 ## Runs `seconds` of production in fixed steps, with autobuyers, up to MAX_CATCH_UP_SECONDS. For long gaps
@@ -79,10 +81,10 @@ static func count_per_second(state: GameState, content: Content) -> float:
 	return minf(Formulas.MAX_FLOAT, state.layer_amount[0] * layer_rate(state, content, 0))
 
 
-## Adds to the Count without passing the register cap. Returns what was actually added.
+## Adds to the Count without passing the register cap or a bad bit. Returns what was actually added.
 static func add_count(state: GameState, amount: float) -> float:
 	var before := state.count
-	state.count = minf(Formulas.register_cap(state.register_bits), state.count + amount)
+	state.count = minf(capacity(state), state.count + amount)
 	var added := maxf(0.0, state.count - before)
 	# After the ending a full register adds the largest float every tick, which would overflow to INF.
 	state.total_produced = minf(Formulas.MAX_FLOAT, state.total_produced + added)
@@ -124,6 +126,8 @@ static func refresh_effects(state: GameState, content: Content) -> void:
 	var boot_bits := 8
 	var carry_multiplier := 1.0
 	var milestone_step := Formulas.MILESTONE_EVERY
+	var scrub_seconds := Formulas.FAULT_SCRUB_SECONDS
+	var fault_rate_multiplier := 1.0
 	var effects := {}
 	for id: StringName in state.firmware:
 		var node: FirmwareDef = content.firmware_by_id.get(id)
@@ -143,6 +147,10 @@ static func refresh_effects(state: GameState, content: Content) -> void:
 				carry_multiplier *= node.value
 			FirmwareDef.Effect.MILESTONE_STEP:
 				milestone_step = mini(milestone_step, int(node.value))
+			FirmwareDef.Effect.SCRUB_SECONDS:
+				scrub_seconds = minf(scrub_seconds, node.value)
+			FirmwareDef.Effect.FAULT_RATE:
+				fault_rate_multiplier *= node.value
 
 	multipliers[0] *= count_multiplier
 	for i: int in GameState.LAYER_COUNT:
@@ -154,6 +162,8 @@ static func refresh_effects(state: GameState, content: Content) -> void:
 	state.boot_bits = mini(boot_bits, max_bits)
 	state.carry_multiplier = carry_multiplier
 	state.milestone_step = milestone_step
+	state.scrub_seconds = scrub_seconds
+	state.fault_rate_multiplier = fault_rate_multiplier
 	state.firmware_effects = effects
 	state.effects_dirty = false
 
@@ -291,8 +301,10 @@ static func widen(state: GameState, content: Content) -> bool:
 	if not can_widen(state, content):
 		return false
 	state.count -= widen_cost(state)
+	var old_bits := state.register_bits
 	state.register_bits = Formulas.next_width(state.register_bits)
 	state.record("widen", state.register_bits)
+	_place_faults(state, old_bits, state.register_bits)
 	return true
 
 
@@ -332,10 +344,122 @@ static func overflow(state: GameState, content: Content) -> float:
 	state.layer_amount = fresh.layer_amount
 	state.layer_bought = fresh.layer_bought
 	state.upgrades.clear()
+	state.bad_bits.clear()
+	state.blocked_time = 0.0
+	# Different every run, but the same for the same game, so the simulator replays exactly.
+	state.run_seed = hash([state.overflows, state.play_time, state.total_carry])
 	state.effects_dirty = true
 	refresh_effects(state, content)
 	state.register_bits = state.boot_bits
 	return gain
+
+
+# --- Bad bits -------------------------------------------------------------------
+
+## The most the Count can hold right now: the register's cap, or just under the lowest bad bit.
+static func capacity(state: GameState) -> float:
+	var cap := Formulas.register_cap(state.register_bits)
+	if not state.bad_bits.is_empty():
+		cap = minf(cap, Formulas.below_bit(state.bad_bits[0]))
+	return cap
+
+
+## The lowest bad bit ahead of the Count, or -1 if there is none.
+static func next_fault(state: GameState) -> int:
+	return state.bad_bits[0] if not state.bad_bits.is_empty() else -1
+
+
+## True when the Count has reached the lowest bad bit and can't grow until it's cleared.
+static func is_blocked(state: GameState) -> bool:
+	return not state.bad_bits.is_empty() and state.count >= Formulas.below_bit(state.bad_bits[0])
+
+
+static func repair_cost(state: GameState) -> float:
+	var bit := next_fault(state)
+	return Formulas.FAULT_REPAIR_SHARE * pow(2.0, bit) if bit >= 0 else 0.0
+
+
+static func can_repair(state: GameState) -> bool:
+	return next_fault(state) >= 0 and state.count >= repair_cost(state)
+
+
+## Clears the lowest bad bit for Count.
+static func repair(state: GameState) -> bool:
+	if not can_repair(state):
+		return false
+	state.count -= repair_cost(state)
+	_clear_fault(state, "repair")
+	return true
+
+
+## Clears the lowest bad bit for free. The UI calls this once the player has solved its parity puzzle.
+static func scrub(state: GameState) -> bool:
+	if next_fault(state) < 0:
+		return false
+	_clear_fault(state, "scrub")
+	return true
+
+
+## The puzzle for the lowest bad bit. The same bit in the same run always gets the same puzzle.
+static func scrub_puzzle(state: GameState) -> ParityGrid:
+	var bit := maxi(0, next_fault(state))
+	return ParityGrid.make(ParityGrid.size_for(bit), hash([state.run_seed, bit]))
+
+
+## Seconds until the bad bit holding the Count scrubs itself.
+static func scrub_time_left(state: GameState) -> float:
+	return maxf(0.0, state.scrub_seconds - state.blocked_time)
+
+
+## The Settings switch. Switching off clears this run's bad bits too.
+static func set_faults_on(state: GameState, on: bool) -> void:
+	if state.faults_on == on:
+		return
+	state.faults_on = on
+	if not on:
+		state.bad_bits.clear()
+		state.blocked_time = 0.0
+	state.record("setting", "bad bits %s" % ("on" if on else "off"))
+
+
+## Maps in bad bits among the bits a widening just added: none in the first run, more as the machine ages,
+## fewer with Spare rows. The run's seed and the new width decide how many and where.
+static func _place_faults(state: GameState, from_bit: int, to_bit: int) -> void:
+	if not state.faults_on or state.overflows < 1:
+		return
+	var rate := Formulas.fault_rate(state.overflows) * state.fault_rate_multiplier
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([state.run_seed, to_bit])
+	var faults := int(rate) + (1 if rng.randf() < rate - int(rate) else 0)
+	for _fault: int in faults:
+		var bit := rng.randi_range(from_bit, to_bit - 1)
+		if not state.bad_bits.has(bit):
+			state.bad_bits.append(bit)
+	state.bad_bits.sort()
+
+
+## A bad bit holding the Count scrubs itself after scrub_seconds of holding it.
+static func _wait_out_fault(state: GameState, seconds: float) -> void:
+	if not is_blocked(state):
+		return
+	if state.blocked_time == 0.0:
+		state.record("blocked", state.bad_bits[0])
+	state.blocked_time += seconds
+	if state.blocked_time >= state.scrub_seconds:
+		_clear_fault(state, "waited")
+
+
+static func _clear_fault(state: GameState, how: String) -> void:
+	var bit: int = state.bad_bits.pop_front()
+	state.blocked_time = 0.0
+	match how:
+		"repair":
+			state.faults_repaired += 1
+		"scrub":
+			state.faults_scrubbed += 1
+		_:
+			state.faults_waited += 1
+	state.record(how, bit)
 
 
 # --- Firmware -------------------------------------------------------------------

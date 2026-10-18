@@ -3,7 +3,7 @@ extends Node
 ## set in Settings. The sounds are synthesised by tools/make_sounds.gd.
 ## Runs with --mute or --capture, and headless runs, stay silent.
 
-const SOUND_NAMES: PackedStringArray = ["click", "buy", "upgrade", "overclock", "widen", "achievement", "overflow"]
+const SOUND_NAMES: PackedStringArray = ["click", "buy", "upgrade", "overclock", "widen", "achievement", "overflow", "fault"]
 ## The same sound won't restart faster than this, so rapid purchases don't turn into a buzz.
 const MIN_GAP_SECONDS := 0.045
 const PLAYER_COUNT := 8

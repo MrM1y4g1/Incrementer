@@ -26,6 +26,10 @@ enum Effect {
 	AUTO_WIDEN,
 	## The ×2 output milestone comes every `value` units bought instead of every 40.
 	MILESTONE_STEP,
+	## A bad bit holding the Count scrubs itself after `value` seconds.
+	SCRUB_SECONDS,
+	## Widening maps in `value` times as many bad bits.
+	FAULT_RATE,
 }
 
 @export var id: StringName = &""

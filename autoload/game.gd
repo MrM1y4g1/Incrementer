@@ -90,6 +90,19 @@ func buy_firmware(id: StringName) -> bool:
 	return true
 
 
+func repair_fault() -> bool:
+	return Economy.repair(state)
+
+
+## Clears the lowest bad bit for free, once the player has solved its parity puzzle.
+func scrub_fault() -> bool:
+	return Economy.scrub(state)
+
+
+func set_faults_on(on: bool) -> void:
+	Economy.set_faults_on(state, on)
+
+
 func set_autobuy(switch: String, on: bool) -> void:
 	if bool(state.autobuy.get(switch, true)) != on:
 		state.record("autobuy", "%s %s" % [switch, "on" if on else "off"])

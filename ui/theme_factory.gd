@@ -38,6 +38,16 @@ static func build() -> Theme:
 	theme.set_stylebox("hover", "WarningButton", _box(Color(Palette.AMBER, 0.16), Color(Palette.AMBER, 0.9), 1, 3, 10.0))
 	theme.set_stylebox("pressed", "WarningButton", _box(Color(Palette.AMBER, 0.3), Palette.AMBER, 1, 3, 10.0))
 
+	# Bad bits: red, the colour of damage.
+	theme.set_type_variation("FaultPanel", "PanelContainer")
+	theme.set_stylebox("panel", "FaultPanel", _box(Palette.PANEL, Palette.FAULT, 1, 6, 20.0))
+	theme.set_type_variation("FaultToast", "PanelContainer")
+	theme.set_stylebox("panel", "FaultToast", _box(Palette.PANEL, Palette.FAULT, 1, 4, 12.0))
+	theme.set_type_variation("FaultButton", "Button")
+	theme.set_stylebox("normal", "FaultButton", _box(Color(Palette.FAULT, 0.1), Color(Palette.FAULT, 0.65), 1, 3, 6.0))
+	theme.set_stylebox("hover", "FaultButton", _box(Color(Palette.FAULT, 0.2), Color(Palette.FAULT, 0.95), 1, 3, 6.0))
+	theme.set_stylebox("pressed", "FaultButton", _box(Color(Palette.FAULT, 0.32), Palette.FAULT, 1, 3, 6.0))
+
 	# The main choice on a screen, such as Continue on the start screen.
 	theme.set_type_variation("PrimaryButton", "Button")
 	theme.set_stylebox("normal", "PrimaryButton", _box(Color(Palette.CYAN, 0.16), Palette.CYAN, 1, 3, 10.0))

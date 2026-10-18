@@ -8,8 +8,9 @@ extends RefCounted
 ##   2  M2: adds clock level, upgrades, achievements and total Count produced
 ##   3  M3: adds the run fields, Carry, Firmware, Overflows, run history, autobuyer switches and the ending
 ##   4  1.1.0: adds the run log (events)
+##   5  1.2.0: adds bad bits (run seed, bad bits, blocked time, the switch and the counts)
 
-const VERSION := 4
+const VERSION := 5
 
 
 static func encode(state: GameState, saved_at: float) -> String:
@@ -53,6 +54,8 @@ static func migrate(payload: Dictionary, from_version: int) -> Dictionary:
 			payload = _v2_to_v3(payload)
 		elif version == 3:
 			payload = _v3_to_v4(payload)
+		elif version == 4:
+			payload = _v4_to_v5(payload)
 		version += 1
 	payload["version"] = VERSION
 	return payload
@@ -97,5 +100,22 @@ static func _v3_to_v4(payload: Dictionary) -> Dictionary:
 	var state: Dictionary = state_data
 	# Nothing was logged before version 4, so the log starts empty.
 	state["events"] = []
+	payload["state"] = state
+	return payload
+
+
+static func _v4_to_v5(payload: Dictionary) -> Dictionary:
+	var state_data: Variant = payload.get("state")
+	if typeof(state_data) != TYPE_DICTIONARY:
+		return payload
+	var state: Dictionary = state_data
+	# Bad bits are new: the current run has none, and they're on from the next widening.
+	state["run_seed"] = 0
+	state["bad_bits"] = []
+	state["blocked_time"] = 0.0
+	state["faults_on"] = true
+	state["faults_repaired"] = 0
+	state["faults_scrubbed"] = 0
+	state["faults_waited"] = 0
 	payload["state"] = state
 	return payload

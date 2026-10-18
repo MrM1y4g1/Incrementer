@@ -32,6 +32,14 @@ const CARRY_BONUS_POWER := 7.0
 const CARRY_RIPPLE_SECONDS := 2400.0
 ## Multipliers stay below this so they never become INF, because INF × 0 would be NaN.
 const MAX_MULTIPLIER := 1e300
+## Bad bits: the machine's storage going bad. From the second run on, each widening can map in bad bits
+## among the new bits, on average this many more per Overflow so far, up to FAULT_RATE_MAX.
+const FAULT_RATE_PER_OVERFLOW := 0.5
+const FAULT_RATE_MAX := 3.0
+## A bad bit holding the Count scrubs itself after this many seconds, unless Firmware is faster.
+const FAULT_SCRUB_SECONDS := 60.0
+## Repairing a bad bit costs this share of the bit's value: the Count drops by about one bit.
+const FAULT_REPAIR_SHARE := 0.5
 
 
 ## Price of the next single unit.
@@ -121,3 +129,14 @@ static func next_width(bits: int) -> int:
 ## Output doubles for every `step` units bought (MILESTONE_EVERY unless Firmware lowers it).
 static func milestone_multiplier(bought: int, step: int = MILESTONE_EVERY) -> float:
 	return pow(2.0, floor(float(bought) / maxi(1, step)))
+
+
+## Bad bits each widening maps in, on average, after `overflows` Overflows.
+static func fault_rate(overflows: int) -> float:
+	return minf(FAULT_RATE_MAX, FAULT_RATE_PER_OVERFLOW * overflows)
+
+
+## The largest Count that leaves `bit` unset: 2^bit − 1, or from 53 bits on, where 2^bit − 1 would round
+## up to 2^bit, the largest float below 2^bit.
+static func below_bit(bit: int) -> float:
+	return pow(2.0, bit) - pow(2.0, maxi(0, bit - 53))

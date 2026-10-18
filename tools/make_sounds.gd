@@ -17,6 +17,7 @@ func _init() -> void:
 	_save("widen", _widen())
 	_save("achievement", _bell())
 	_save("overflow", _overflow())
+	_save("fault", _fault())
 	_save("music", _music())
 	print("Wrote sounds to %s" % OUT_DIR)
 	quit()
@@ -152,6 +153,19 @@ func _add_pluck(out: PackedFloat32Array, freq: float, start: float) -> void:
 func _mix(out: PackedFloat32Array, index: int, value: float) -> void:
 	var size := out.size()
 	out[((index % size) + size) % size] += value
+
+
+## A bad bit: two short, low, slightly square pulses, like a memory check failing.
+func _fault() -> PackedFloat32Array:
+	var out := _buffer(0.34)
+	for pulse: int in 2:
+		var freq := 330.0 if pulse == 0 else 247.0
+		var start := int(pulse * 0.17 * RATE)
+		for i: int in range(start, mini(out.size(), start + int(0.15 * RATE))):
+			var t := float(i - start) / RATE
+			var wave := clampf(sin(TAU * freq * t) * 2.5, -1.0, 1.0)
+			out[i] += wave * exp(-t * 16.0) * 0.2
+	return out
 
 
 # --- Output ---------------------------------------------------------------------

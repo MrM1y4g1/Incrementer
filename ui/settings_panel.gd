@@ -1,6 +1,7 @@
 class_name SettingsPanel
 extends PanelContainer
-## Settings: number format, volumes, reduced motion and how often the game autosaves.
+## Settings: number format, volumes, reduced motion, how often the game autosaves, and whether bad bits
+## appear. That last one belongs to the save, not to settings.cfg.
 
 signal closed
 
@@ -12,6 +13,7 @@ var _music: HSlider
 var _sfx: HSlider
 var _motion: CheckButton
 var _autosave: OptionButton
+var _faults: CheckButton
 
 
 func _init() -> void:
@@ -62,6 +64,11 @@ func _init() -> void:
 	_autosave.item_selected.connect(func(i: int) -> void: Settings.set_value("autosave_seconds", Settings.AUTOSAVE_CHOICES[i]))
 	_row(grid, "Autosave", _autosave)
 
+	_faults = CheckButton.new()
+	_faults.text = "Storage goes bad after the first Overflow"
+	_faults.toggled.connect(func(on: bool) -> void: Game.set_faults_on(on))
+	_row(grid, "Bad bits", _faults)
+
 
 ## Shows the current settings without triggering any change signals.
 func refresh() -> void:
@@ -70,6 +77,7 @@ func refresh() -> void:
 	_sfx.set_value_no_signal(Settings.sfx_volume)
 	_motion.set_pressed_no_signal(Settings.reduced_motion)
 	_autosave.select(maxi(0, Settings.AUTOSAVE_CHOICES.find(Settings.autosave_seconds)))
+	_faults.set_pressed_no_signal(Game.state.faults_on)
 
 
 func _row(grid: GridContainer, text: String, control: Control) -> void:

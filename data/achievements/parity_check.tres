@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="AchievementDef" format=3]
+
+[ext_resource type="Script" path="res://data/defs/achievement_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"parity_check"
+display_name = "Parity check"
+description = "Scrub a bad bit by solving its parity"
+condition = 11
+layer_tier = 0
+threshold = 1.0

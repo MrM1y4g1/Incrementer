@@ -21,6 +21,12 @@ var layer_amount := PackedFloat64Array()
 var layer_bought := PackedInt64Array()
 ## Ids of upgrades bought this run.
 var upgrades: Array[StringName] = []
+## Seeds this run's bad bits and their puzzles, so a run always meets the same ones.
+var run_seed := 0
+## Bad bits ahead of the Count this run, lowest first. The Count can't pass the lowest one.
+var bad_bits: Array[int] = []
+## Seconds the Count has been held by the lowest bad bit. At scrub_seconds the bit scrubs itself.
+var blocked_time := 0.0
 
 # --- The whole save ---
 var peak_count := 0.0
@@ -39,6 +45,12 @@ var runs: Array[Dictionary] = []
 var autobuy := {"low": true, "high": true, "clock": true, "widen": true}
 var ended := false
 var ended_time := 0.0
+## Whether widening maps in bad bits. A switch in Settings.
+var faults_on := true
+## Bad bits cleared over the whole save: repaired with Count, scrubbed with the puzzle, or waited out.
+var faults_repaired := 0
+var faults_scrubbed := 0
+var faults_waited := 0
 ## The run log, oldest first: [play seconds, kind, detail]. See RunLog for the kinds.
 var events: Array = []
 
@@ -51,6 +63,8 @@ var max_bits := 64
 var milestone_step := Formulas.MILESTONE_EVERY
 var boot_bits := 8
 var carry_multiplier := 1.0
+var scrub_seconds := Formulas.FAULT_SCRUB_SECONDS
+var fault_rate_multiplier := 1.0
 ## Firmware effects the player owns, as FirmwareDef.Effect values.
 var firmware_effects := {}
 
@@ -85,6 +99,9 @@ func to_dict() -> Dictionary:
 		"layer_amount": Array(layer_amount),
 		"layer_bought": Array(layer_bought),
 		"upgrades": _names(upgrades),
+		"run_seed": run_seed,
+		"bad_bits": bad_bits.duplicate(),
+		"blocked_time": blocked_time,
 		"peak_count": peak_count,
 		"total_produced": total_produced,
 		"total_clicks": total_clicks,
@@ -98,6 +115,10 @@ func to_dict() -> Dictionary:
 		"autobuy": autobuy.duplicate(),
 		"ended": ended,
 		"ended_time": ended_time,
+		"faults_on": faults_on,
+		"faults_repaired": faults_repaired,
+		"faults_scrubbed": faults_scrubbed,
+		"faults_waited": faults_waited,
 		"events": events.duplicate(true),
 	}
 
@@ -121,6 +142,21 @@ static func from_dict(data: Dictionary) -> GameState:
 	s.overflows = maxi(0, int(data.get("overflows", 0)))
 	s.ended = bool(data.get("ended", false))
 	s.ended_time = maxf(0.0, float(data.get("ended_time", 0.0)))
+	s.run_seed = int(data.get("run_seed", 0))
+	s.blocked_time = maxf(0.0, float(data.get("blocked_time", 0.0)))
+	s.faults_on = bool(data.get("faults_on", true))
+	s.faults_repaired = maxi(0, int(data.get("faults_repaired", 0)))
+	s.faults_scrubbed = maxi(0, int(data.get("faults_scrubbed", 0)))
+	s.faults_waited = maxi(0, int(data.get("faults_waited", 0)))
+	var saved_bad_bits: Variant = data.get("bad_bits", [])
+	if saved_bad_bits is Array:
+		var list: Array = saved_bad_bits
+		for item: Variant in list:
+			# Only bits the register holds and the Count hasn't passed.
+			var bit := int(item)
+			if bit >= 0 and bit < s.register_bits and s.count <= Formulas.below_bit(bit) and not s.bad_bits.has(bit):
+				s.bad_bits.append(bit)
+		s.bad_bits.sort()
 
 	var amounts: Variant = data.get("layer_amount", [])
 	if amounts is Array:

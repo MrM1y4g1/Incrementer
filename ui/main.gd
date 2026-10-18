@@ -9,7 +9,8 @@ extends Control
 ##   --mute                 no sound (also implied by --capture)
 ##   --autoplay=<seconds>   fast-forward a scripted player before the first frame
 ##   --open=<views>         open views at start, comma-separated:
-##                          title, upgrades, stats, firmware, settings, save, start-over, overflow, ending, debug, toast
+##                          title, upgrades, stats, firmware, settings, save, start-over, overflow, ending, debug, toast,
+##                          fault (puts a bad bit just above the Count and fills up to it), scrub
 ##                          (--autoplay and --capture skip the start screen unless --open asks for it)
 ##   --capture=<png path>   save a screenshot after a few frames, then quit
 
@@ -23,6 +24,8 @@ var _capture_path := ""
 var _register: RegisterDisplay
 var _register_label: Label
 var _bits_label: Label
+var _repair_button: Button
+var _scrub_button: Button
 var _count_label: Label
 var _rate_label: Label
 var _boost_label: Label
@@ -47,6 +50,9 @@ var _fx: FxLayer
 var _debug_panel: DebugPanel
 var _title: TitleScreen
 var _skip_title := false
+# Bad bits cleared so far and whether one was holding the Count, to notice changes between refreshes.
+var _faults_cleared := -1
+var _was_blocked := false
 
 # Overlays: only one is open at a time, over a shared backdrop.
 var _backdrop: ColorRect
@@ -58,6 +64,7 @@ var _save_panel: SavePanel
 var _ending_panel: EndingPanel
 var _confirm_panel: PanelContainer
 var _confirm_label: Label
+var _scrub_panel: ScrubPanel
 var _start_over_panel: PanelContainer
 var _start_over_status: Label
 
@@ -72,6 +79,8 @@ func _ready() -> void:
 	Settings.changed.connect(_apply_settings)
 	_apply_settings()
 	_apply_dev_args()
+	# --autoplay may have cleared bad bits since the settings refresh; that is no reason to flash.
+	_faults_cleared = -1
 
 	var timer := Timer.new()
 	timer.wait_time = REFRESH_SECONDS
@@ -163,9 +172,22 @@ func _build_top() -> Control:
 	_register.custom_minimum_size = Vector2(0, 70)
 	_register.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	register_box.add_child(_register)
+	# The fault buttons share the line under the register, so the panel keeps its height when they appear.
+	var status_row := HBoxContainer.new()
+	status_row.custom_minimum_size = Vector2(0, 28)
+	status_row.add_theme_constant_override("separation", 6)
+	register_box.add_child(status_row)
 	_bits_label = _label("", 13, Palette.MUTED)
 	_bits_label.add_theme_font_override("font", Fonts.mono())
-	register_box.add_child(_bits_label)
+	_bits_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_bits_label.clip_text = true
+	_bits_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	status_row.add_child(_bits_label)
+	_repair_button = _fault_button(_on_repair)
+	status_row.add_child(_repair_button)
+	_scrub_button = _fault_button(_open_scrub)
+	_scrub_button.text = "SCRUB"
+	status_row.add_child(_scrub_button)
 
 	var count_panel := FramePanel.new()
 	count_panel.custom_minimum_size = Vector2(SIDE_WIDTH, 156)
@@ -373,6 +395,11 @@ func _build_overlays() -> void:
 	cancel.custom_minimum_size = Vector2(110, 40)
 	confirm_buttons.add_child(cancel)
 
+	_scrub_panel = ScrubPanel.new()
+	_scrub_panel.closed.connect(_close_overlays)
+	_scrub_panel.solved.connect(_on_scrubbed)
+	_add_overlay(_scrub_panel, Vector2(480, 0))
+
 	_start_over_panel = PanelContainer.new()
 	_start_over_panel.theme_type_variation = &"WarningPanel"
 	_add_overlay(_start_over_panel, Vector2(520, 0))
@@ -440,6 +467,15 @@ func _action_button(action: Callable) -> Button:
 	button.add_theme_font_size_override("font_size", 15)
 	button.clip_text = true
 	button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	button.pressed.connect(action)
+	return button
+
+
+func _fault_button(action: Callable) -> Button:
+	var button := Button.new()
+	button.theme_type_variation = &"FaultButton"
+	button.add_theme_font_size_override("font_size", 13)
+	button.visible = false
 	button.pressed.connect(action)
 	return button
 
@@ -517,14 +553,28 @@ func _refresh() -> void:
 		carry_text += "%s%s Carry to spend" % ["  ·  " if carry_text != "" else "", NumberFormat.amount(state.carry)]
 	_carry_label.text = carry_text
 
+	var fault := Economy.next_fault(state)
+	var blocked := Economy.is_blocked(state)
+	_register.show_faults(state.bad_bits, blocked, state.blocked_time / state.scrub_seconds if blocked else 0.0)
 	_register.show_value(state.register_bits, state.count, full)
 	_register_label.text = "REGISTER  ·  %d-BIT  ·  HOLDS %s" % [state.register_bits, NumberFormat.amount(cap)]
 	if full:
 		_bits_label.text = "Full. Widen the register or Overflow to keep counting." if Economy.can_overflow(state) else "Full. Widen the register to keep counting."
 		_bits_label.add_theme_color_override("font_color", Palette.AMBER)
+	elif blocked:
+		_bits_label.text = "Bad bit %d holds the Count. It scrubs itself in %s." % [fault, NumberFormat.duration(Economy.scrub_time_left(state))]
+		_bits_label.add_theme_color_override("font_color", Palette.FAULT)
 	else:
 		_bits_label.text = "%.1f of %d bits used" % [log(state.count + 1.0) / log(2.0), state.register_bits]
+		if fault >= 0:
+			_bits_label.text += "  ·  bad bit ahead at %d" % fault
 		_bits_label.add_theme_color_override("font_color", Palette.MUTED)
+	_repair_button.visible = blocked
+	_scrub_button.visible = blocked
+	if blocked:
+		_repair_button.text = "REPAIR  %s" % NumberFormat.amount(Economy.repair_cost(state))
+		_repair_button.disabled = not Economy.can_repair(state)
+	_notice_faults(state, blocked)
 
 	_increment_button.text = "INCREMENT\n+%s" % NumberFormat.amount(Economy.click_value(state, content))
 	_refresh_widen(state, content)
@@ -646,6 +696,43 @@ func _close_overlays() -> void:
 	_backdrop.visible = false
 
 
+## Sound, a first-time explanation, and a flash when a bad bit clears. The scrub puzzle closes if its bit
+## was cleared some other way.
+func _notice_faults(state: GameState, blocked: bool) -> void:
+	var cleared := state.faults_repaired + state.faults_scrubbed + state.faults_waited
+	if blocked and not _was_blocked:
+		Audio.play("fault", 0.0)
+		if cleared == 0:
+			_toast(&"FaultToast", "BAD BIT", Palette.FAULT, "Bit %d has gone bad" % Economy.next_fault(state),
+				"The Count can't pass it. Repair it with Count, scrub it by solving its parity, or wait %d seconds." % roundi(state.scrub_seconds), 10.0)
+	if _faults_cleared >= 0 and cleared > _faults_cleared:
+		_register.flash(Color(Palette.CYAN, 0.5))
+	if _scrub_panel.visible and _scrub_panel.bit != Economy.next_fault(state):
+		_close_overlays()
+	_faults_cleared = cleared
+	_was_blocked = blocked
+
+
+func _on_repair() -> void:
+	if Game.repair_fault():
+		Audio.play("buy")
+	_refresh()
+
+
+func _open_scrub() -> void:
+	if Economy.next_fault(Game.state) < 0:
+		return
+	_scrub_panel.open_for(Game.state)
+	_open(_scrub_panel)
+
+
+func _on_scrubbed() -> void:
+	if Game.scrub_fault():
+		Audio.play("upgrade")
+	_close_overlays()
+	_refresh()
+
+
 func _show_title() -> void:
 	_title.refresh(Game.state)
 	_title.visible = true
@@ -684,7 +771,7 @@ func _quit() -> void:
 	get_tree().quit()
 
 
-func _toast(variation: StringName, heading: String, heading_color: Color, title: String, body: String) -> void:
+func _toast(variation: StringName, heading: String, heading_color: Color, title: String, body: String, seconds: float = TOAST_SECONDS) -> void:
 	var toast := PanelContainer.new()
 	toast.theme_type_variation = variation
 	toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -694,11 +781,13 @@ func _toast(variation: StringName, heading: String, heading_color: Color, title:
 	var head := _heading(heading)
 	head.add_theme_color_override("font_color", heading_color)
 	box.add_child(head)
-	box.add_child(_label(title, 17, Palette.ICE))
-	box.add_child(_label(body, 13, Palette.MUTED))
+	# Wrapped, so a long message stays inside the toast column instead of running off the screen.
+	for line: Label in [_label(title, 17, Palette.ICE), _label(body, 13, Palette.MUTED)]:
+		line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		box.add_child(line)
 	_toasts.add_child(toast)
 	var tween := toast.create_tween()
-	tween.tween_interval(TOAST_SECONDS)
+	tween.tween_interval(seconds)
 	tween.tween_property(toast, "modulate:a", 0.0, 0.5)
 	tween.tween_callback(toast.queue_free)
 
@@ -804,6 +893,18 @@ func _open_view(view: String) -> void:
 			_show_title()
 		"start-over":
 			_ask_start_over()
+		"fault":
+			# For screenshots: a bad bit just above the Count, with the Count filled up to it.
+			var state := Game.state
+			var bit := mini(state.register_bits - 1, floori(log(maxf(2.0, state.count)) / log(2.0)) + 2)
+			if not state.bad_bits.has(bit):
+				state.bad_bits.append(bit)
+				state.bad_bits.sort()
+			Economy.add_count(state, Formulas.register_cap(state.register_bits))
+			state.blocked_time = 0.4 * state.scrub_seconds
+			_refresh()
+		"scrub":
+			_open_scrub()
 		"upgrades":
 			_show_tab(true)
 		"stats":
