@@ -30,6 +30,21 @@ static func build() -> Theme:
 	theme.set_stylebox("hover", "OverflowButton", _box(Color(Palette.MAGENTA, 0.16), Color(Palette.MAGENTA, 0.9), 1, 3, 10.0))
 	theme.set_stylebox("pressed", "OverflowButton", _box(Color(Palette.MAGENTA, 0.3), Palette.MAGENTA, 1, 3, 10.0))
 
+	# Starting over can't be undone, so it gets amber, the colour that asks for attention.
+	theme.set_type_variation("WarningPanel", "PanelContainer")
+	theme.set_stylebox("panel", "WarningPanel", _box(Palette.PANEL, Palette.AMBER, 1, 6, 20.0))
+	theme.set_type_variation("WarningButton", "Button")
+	theme.set_stylebox("normal", "WarningButton", _box(Color(Palette.AMBER, 0.08), Color(Palette.AMBER, 0.6), 1, 3, 10.0))
+	theme.set_stylebox("hover", "WarningButton", _box(Color(Palette.AMBER, 0.16), Color(Palette.AMBER, 0.9), 1, 3, 10.0))
+	theme.set_stylebox("pressed", "WarningButton", _box(Color(Palette.AMBER, 0.3), Palette.AMBER, 1, 3, 10.0))
+
+	# The main choice on a screen, such as Continue on the start screen.
+	theme.set_type_variation("PrimaryButton", "Button")
+	theme.set_stylebox("normal", "PrimaryButton", _box(Color(Palette.CYAN, 0.16), Palette.CYAN, 1, 3, 10.0))
+	theme.set_stylebox("hover", "PrimaryButton", _box(Color(Palette.CYAN, 0.26), Palette.CYAN, 1, 3, 10.0))
+	theme.set_stylebox("pressed", "PrimaryButton", _box(Color(Palette.CYAN, 0.36), Palette.CYAN, 1, 3, 10.0))
+	theme.set_stylebox("focus", "PrimaryButton", _box(Color(0, 0, 0, 0), Color(Palette.ICE, 0.7), 1, 3, 10.0))
+
 	theme.set_stylebox("normal", "TextEdit", _box(Palette.ROW, Palette.LINE, 1, 3, 8.0))
 	theme.set_stylebox("focus", "TextEdit", _box(Color(0, 0, 0, 0), Palette.CYAN, 1, 3, 8.0))
 	theme.set_color("font_color", "TextEdit", Palette.ICE)

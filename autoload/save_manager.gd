@@ -5,6 +5,7 @@ extends Node
 const SAVE_PATH := "user://save.json"
 const BACKUP_PATH := "user://save.bak"
 const TEMP_PATH := "user://save.tmp"
+const START_OVER_PATH := "user://save-before-start-over.json"
 
 var enabled := true
 ## Filled in when a save is loaded, so the UI can show a "While you were away" report.
@@ -96,11 +97,26 @@ func import_text(text: String) -> String:
 	return ""
 
 
-## Deletes the save and its backup and starts a new game. Used by the debug panel.
+## Starts a new game for the player. The old game is first written to START_OVER_PATH, which the game
+## never reads, so someone who regrets it can rename it to save.json by hand. Settings stay.
+func start_over() -> void:
+	if enabled:
+		var file := FileAccess.open(START_OVER_PATH, FileAccess.WRITE)
+		if file != null:
+			file.store_string(SaveCodec.encode(Game.state, Time.get_unix_time_from_system()))
+			file.close()
+	wipe()
+	if enabled:
+		save_game()
+
+
+## Deletes the save and its backup and starts a new game. Used by the debug panel and `start_over`.
 func wipe() -> void:
-	for path: String in [SAVE_PATH, BACKUP_PATH, TEMP_PATH]:
-		if FileAccess.file_exists(path):
-			DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+	# --no-save promises never to touch the save files.
+	if enabled:
+		for path: String in [SAVE_PATH, BACKUP_PATH, TEMP_PATH]:
+			if FileAccess.file_exists(path):
+				DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 	Game.replace_state(GameState.new())
 	offline_seconds = 0.0
 	offline_gain = 0.0

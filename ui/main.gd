@@ -9,7 +9,8 @@ extends Control
 ##   --mute                 no sound (also implied by --capture)
 ##   --autoplay=<seconds>   fast-forward a scripted player before the first frame
 ##   --open=<views>         open views at start, comma-separated:
-##                          upgrades, stats, firmware, settings, save, overflow, ending, debug, toast
+##                          title, upgrades, stats, firmware, settings, save, start-over, overflow, ending, debug, toast
+##                          (--autoplay and --capture skip the start screen unless --open asks for it)
 ##   --capture=<png path>   save a screenshot after a few frames, then quit
 
 const REFRESH_SECONDS := 0.1
@@ -45,6 +46,8 @@ var _cards: Array[UpgradeCard] = []
 var _toasts: VBoxContainer
 var _fx: FxLayer
 var _debug_panel: DebugPanel
+var _title: TitleScreen
+var _skip_title := false
 
 # Overlays: only one is open at a time, over a shared backdrop.
 var _backdrop: ColorRect
@@ -56,6 +59,8 @@ var _save_panel: SavePanel
 var _ending_panel: EndingPanel
 var _confirm_panel: PanelContainer
 var _confirm_label: Label
+var _start_over_panel: PanelContainer
+var _start_over_status: Label
 var _offline_panel: PanelContainer
 var _offline_label: Label
 
@@ -78,7 +83,12 @@ func _ready() -> void:
 	add_child(timer)
 
 	_refresh()
-	_show_offline_report()
+	# Screenshots and the autoplayer go straight to the machine.
+	if _skip_title:
+		_title.visible = false
+		_show_offline_report()
+	else:
+		_show_title()
 	if _capture_path != "":
 		_capture.call_deferred()
 
@@ -87,7 +97,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	var key := event as InputEventKey
 	if key == null or not key.pressed:
 		return
-	if key.keycode == KEY_SPACE and not _backdrop.visible:
+	if key.keycode == KEY_SPACE and not _backdrop.visible and not _title.visible:
 		_on_increment()
 		get_viewport().set_input_as_handled()
 		return
@@ -122,6 +132,13 @@ func _build() -> void:
 
 	_fx = FxLayer.new()
 	add_child(_fx)
+	# Above the machine, below the overlays, so Settings and the Start over question open over it.
+	_title = TitleScreen.new()
+	_title.continue_pressed.connect(_on_title_continue)
+	_title.new_game_pressed.connect(_ask_start_over)
+	_title.settings_pressed.connect(func() -> void: _open(_settings_panel))
+	_title.quit_pressed.connect(_quit)
+	add_child(_title)
 	_build_overlays()
 
 
@@ -330,6 +347,7 @@ func _build_overlays() -> void:
 
 	_save_panel = SavePanel.new()
 	_save_panel.closed.connect(_close_overlays)
+	_save_panel.start_over_pressed.connect(_ask_start_over)
 	_add_overlay(_save_panel, Vector2(720, 420))
 
 	_ending_panel = EndingPanel.new()
@@ -358,6 +376,36 @@ func _build_overlays() -> void:
 	var cancel := _small_button("Cancel", _close_overlays)
 	cancel.custom_minimum_size = Vector2(110, 40)
 	confirm_buttons.add_child(cancel)
+
+	_start_over_panel = PanelContainer.new()
+	_start_over_panel.theme_type_variation = &"WarningPanel"
+	_add_overlay(_start_over_panel, Vector2(520, 0))
+	var start_box := VBoxContainer.new()
+	start_box.add_theme_constant_override("separation", 14)
+	_start_over_panel.add_child(start_box)
+	var start_title := _heading("START OVER?")
+	start_title.add_theme_color_override("font_color", Palette.AMBER)
+	start_box.add_child(start_title)
+	var start_text := _label("This erases your whole game: the Count, Carry, Firmware, achievements, stats and run history. Settings stay.
+
+To keep a copy, press Copy save and paste it somewhere safe. Save data → Import loads it again.", 17, Palette.ICE)
+	start_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	start_box.add_child(start_text)
+	_start_over_status = _label("", 13, Palette.MUTED)
+	start_box.add_child(_start_over_status)
+	var start_buttons := HBoxContainer.new()
+	start_buttons.add_theme_constant_override("separation", 8)
+	start_box.add_child(start_buttons)
+	var erase := _small_button("Start over", _confirm_start_over)
+	erase.theme_type_variation = &"WarningButton"
+	erase.custom_minimum_size = Vector2(140, 40)
+	start_buttons.add_child(erase)
+	var copy := _small_button("Copy save", _copy_save)
+	copy.custom_minimum_size = Vector2(120, 40)
+	start_buttons.add_child(copy)
+	var keep := _small_button("Cancel", _close_overlays)
+	keep.custom_minimum_size = Vector2(110, 40)
+	start_buttons.add_child(keep)
 
 	_offline_panel = PanelContainer.new()
 	_offline_panel.theme_type_variation = &"OverlayPanel"
@@ -614,6 +662,45 @@ func _close_overlays() -> void:
 	_backdrop.visible = false
 
 
+func _show_title() -> void:
+	_title.refresh(Game.state)
+	_title.visible = true
+	_title.focus_primary()
+
+
+func _on_title_continue() -> void:
+	_title.visible = false
+	get_viewport().gui_release_focus()
+	_show_offline_report()
+
+
+func _ask_start_over() -> void:
+	_start_over_status.visible = false
+	_open(_start_over_panel)
+
+
+func _copy_save() -> void:
+	DisplayServer.clipboard_set(SaveManager.export_text())
+	_start_over_status.text = "Copied. Paste it somewhere safe before you start over."
+	_start_over_status.visible = true
+
+
+func _confirm_start_over() -> void:
+	SaveManager.start_over()
+	_close_overlays()
+	_title.visible = false
+	get_viewport().gui_release_focus()
+	_show_tab(false)
+	_refresh()
+
+
+## Quit on the start screen. Quitting from code skips the window's close request, so save first.
+func _quit() -> void:
+	if SaveManager.enabled:
+		SaveManager.save_game()
+	get_tree().quit()
+
+
 func _show_offline_report() -> void:
 	if SaveManager.offline_seconds < OFFLINE_REPORT_MIN_SECONDS:
 		return
@@ -726,8 +813,10 @@ func _on_mode(mode: int) -> void:
 func _apply_dev_args() -> void:
 	for arg: String in OS.get_cmdline_user_args():
 		if arg.begins_with("--autoplay="):
+			_skip_title = true
 			AutoPlayer.play(Game.state, Game.content, arg.get_slice("=", 1).to_float())
 		elif arg.begins_with("--capture="):
+			_skip_title = true
 			_capture_path = arg.get_slice("=", 1)
 		elif arg.begins_with("--open="):
 			for view: String in arg.get_slice("=", 1).split(","):
@@ -736,6 +825,10 @@ func _apply_dev_args() -> void:
 
 func _open_view(view: String) -> void:
 	match view:
+		"title":
+			_show_title()
+		"start-over":
+			_ask_start_over()
 		"upgrades":
 			_show_tab(true)
 		"stats":

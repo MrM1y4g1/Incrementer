@@ -1,8 +1,10 @@
 class_name SavePanel
 extends PanelContainer
 ## Save export and import as text. Browsers can lose site data, so this is the player's backup.
+## Start over is here too, next to the Copy button that keeps the old game.
 
 signal closed
+signal start_over_pressed
 
 var _text: TextEdit
 var _status: Label
@@ -38,6 +40,9 @@ func _init() -> void:
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	buttons.add_child(spacer)
+	var start_over := _button("Start over", func() -> void: start_over_pressed.emit())
+	start_over.theme_type_variation = &"WarningButton"
+	buttons.add_child(start_over)
 	buttons.add_child(_button("Close", func() -> void: closed.emit()))
 
 
