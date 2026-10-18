@@ -484,6 +484,7 @@ func _refresh() -> void:
 	_refresh_overflow(state, content)
 
 	_status_label.text = "Run %s  ·  played %s  ·  %s" % [NumberFormat.duration(state.run_time), NumberFormat.duration(state.play_time), SaveManager.status_text()]
+	_status_label.add_theme_color_override("font_color", Palette.AMBER if SaveManager.storage_at_risk() else Palette.MUTED)
 	_firmware_button.visible = state.total_carry > 0.0 or not state.firmware.is_empty()
 
 	# Parts: the unlocked layers plus the next one, so the list grows as the run does.

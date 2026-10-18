@@ -107,9 +107,16 @@ func wipe() -> void:
 	last_saved_unix = 0.0
 
 
+## True on the Web when the browser won't keep files between visits (private windows, blocked storage).
+func storage_at_risk() -> bool:
+	return enabled and OS.has_feature("web") and not OS.is_userfs_persistent()
+
+
 func status_text() -> String:
 	if not enabled:
 		return "Saving off (--no-save)"
+	if storage_at_risk():
+		return "This browser won't keep your save: use Save data to back it up"
 	if last_saved_unix <= 0.0:
 		return "Autosave every %d s" % int(Settings.autosave_seconds)
 	var ago := Time.get_unix_time_from_system() - last_saved_unix
