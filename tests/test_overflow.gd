@@ -98,3 +98,13 @@ func test_huge_multipliers_never_produce_nan() -> void:
 	check(not is_nan(s.count) and is_finite(s.count), "the Count stays a real number")
 	for i: int in GameState.LAYER_COUNT:
 		check(not is_nan(s.layer_amount[i]), "layer %d stays a real number" % (i + 1))
+
+
+func test_rates_stay_finite_at_the_end() -> void:
+	var content := Fixtures.content()
+	var s := GameState.new()
+	s.register_bits = 1024
+	s.total_carry = 1e300
+	s.layer_amount[0] = Formulas.MAX_FLOAT
+	check(is_finite(Economy.count_per_second(s, content)), "Count per second stays finite")
+	check(is_finite(Economy.click_value(s, content)), "a click stays finite")

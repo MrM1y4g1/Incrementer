@@ -57,7 +57,8 @@ static func layer_rate(state: GameState, content: Content, index: int) -> float:
 static func count_per_second(state: GameState, content: Content) -> float:
 	if content.layers.is_empty():
 		return 0.0
-	return state.layer_amount[0] * layer_rate(state, content, 0)
+	# Late in the game this product can pass the largest float; keep it finite for display and clicks.
+	return minf(Formulas.MAX_FLOAT, state.layer_amount[0] * layer_rate(state, content, 0))
 
 
 ## Adds to the Count without passing the register cap. Returns what was actually added.
@@ -151,7 +152,7 @@ static func _multiply(multipliers: PackedFloat64Array, tier: int, value: float) 
 
 static func click_value(state: GameState, content: Content) -> float:
 	refresh_effects(state, content)
-	return CLICK_VALUE * state.click_multiplier + state.click_rate_share * count_per_second(state, content)
+	return minf(Formulas.MAX_FLOAT, CLICK_VALUE * state.click_multiplier + state.click_rate_share * count_per_second(state, content))
 
 
 static func click(state: GameState, content: Content) -> void:
