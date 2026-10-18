@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.2 · 18 October 2026
+
+- Fixed a memory leak in the browser. The machine schematic redrew all its shapes 60 times a second, and the browser kept memory for each one, so the tab grew by about 2 MB a second until it froze. The shapes now redraw only when they change, and the browser's memory stays level.
+
 ## 1.3.1 · 18 October 2026
 
 - The screen stays at 1280 × 720. It's drawn at its real size in the middle of the window and never enlarged; it only shrinks when the window is too small to hold it. 1.2.1 scaled it to fit, which zoomed it in on large screens.

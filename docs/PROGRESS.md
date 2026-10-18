@@ -2,6 +2,20 @@
 
 Newest first. Screenshots are captured from the real game at 1280 × 720. The `--autoplay` flag fast-forwards a scripted player, so the later shots show a run in progress.
 
+## 18 Oct 2026 · 1.3.2: the browser memory leak
+
+**What you found:** after an hour in the browser, Chrome's process for the game held 3.4 GB, and then the game stopped responding.
+
+**Finding it:** I served copies of the Web build from my machine, so your save stayed out of it, and measured them:
+- The game's WebAssembly memory stayed at 137 MB and JavaScript's heap stayed level. Whatever grew wasn't the game's own data.
+- At the start of a game, nothing grew. Two hours in, launched with `--autoplay=7300`, the tab grew from 1.19 to 1.33 GB in 50 seconds while idle.
+- The only thing redrawn every frame was the machine schematic: every module as a filled polygon with a smoothed outline, and every pulse as a smoothed circle. By mid-game that's about 220 polygons a frame, 13,000 a second. In the browser each one gets a new WebGL buffer.
+- A copy with the schematic frozen stayed level, at about 450 MB.
+
+**The fix:** the modules, labels and links redraw only when what they show changes. A light layer on top draws the moving pulses every frame, from one small dot texture, plus the "+N" counts. It looks the same as before. Two hours into a game, the fixed build stayed at about 530 MB for three minutes straight; the old build would have gained about 400 MB in that time.
+
+AGENTS.md now says that anything redrawn every frame may only use rectangles, textures and text.
+
 ## 18 Oct 2026 · 1.3.1: the real size, and no missing glyphs
 
 **What you found:** the game zoomed to fit the window instead of keeping its size, and the symbol between OVERCLOCK and the number looked wrong.
