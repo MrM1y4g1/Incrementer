@@ -26,6 +26,7 @@ var _bits_label: Label
 var _count_label: Label
 var _rate_label: Label
 var _boost_label: Label
+var _carry_label: Label
 var _schematic: SchematicView
 var _increment_button: Button
 var _widen_button: Button
@@ -168,6 +169,13 @@ func _build_top() -> Control:
 	count_box.add_child(_rate_label)
 	_boost_label = _label("", 13, Palette.MUTED)
 	count_box.add_child(_boost_label)
+	_carry_label = _label("", 13, Palette.VIOLET)
+	count_box.add_child(_carry_label)
+	# A Label asks for the width of its text, so long numbers would widen this panel and squeeze the
+	# register every time the text changed. Clipped labels leave the panel at SIDE_WIDTH.
+	for label: Label in [_count_label, _rate_label, _boost_label, _carry_label]:
+		label.clip_text = true
+		label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	return top
 
 
@@ -462,18 +470,19 @@ func _refresh() -> void:
 	_count_label.text = NumberFormat.amount(state.count)
 	_rate_label.text = "+%s per second" % NumberFormat.rate(Economy.count_per_second(state, content))
 	_rate_label.add_theme_color_override("font_color", Palette.AMBER if full else Palette.ICE)
-	var boosts := "Clock %s Hz  ·  %d achievements, +%d%%" % [
+	_boost_label.text = "Clock %s Hz  ·  %d achievements, +%d%%" % [
 		NumberFormat.rate(Formulas.clock_multiplier(state.clock_level)), state.achievements.size(),
 		roundi(state.achievements.size() * Formulas.ACHIEVEMENT_BONUS * 100.0)]
 	# Name the Carry bonus, and while it ripples in, say where it's heading and when it gets there.
+	var carry_text := ""
 	if state.total_carry > 0.0:
-		boosts += "  ·  Carry bonus ×%s" % NumberFormat.amount(Economy.carry_bonus_now(state))
+		carry_text = "Carry bonus ×%s" % NumberFormat.amount(Economy.carry_bonus_now(state))
 		var ripple_left := Formulas.CARRY_RIPPLE_SECONDS - state.run_time
 		if ripple_left > 0.0:
-			boosts += ", ×%s in %s" % [NumberFormat.amount(Formulas.carry_bonus(state.total_carry)), NumberFormat.duration(ripple_left)]
+			carry_text += ", ×%s in %s" % [NumberFormat.amount(Formulas.carry_bonus(state.total_carry)), NumberFormat.duration(ripple_left)]
 	if state.carry >= 1.0:
-		boosts += "  ·  %s Carry to spend" % NumberFormat.amount(state.carry)
-	_boost_label.text = boosts
+		carry_text += "%s%s Carry to spend" % ["  ·  " if carry_text != "" else "", NumberFormat.amount(state.carry)]
+	_carry_label.text = carry_text
 
 	_register.show_value(state.register_bits, state.count, full)
 	_register_label.text = "REGISTER  ·  %d-BIT  ·  HOLDS %s" % [state.register_bits, NumberFormat.amount(cap)]

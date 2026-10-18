@@ -48,6 +48,7 @@ func _init(row_index: int) -> void:
 	_detail_label.add_theme_font_size_override("font_size", 11)
 	_detail_label.add_theme_color_override("font_color", Palette.MUTED)
 	_detail_label.clip_text = true
+	_detail_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	text.add_child(_detail_label)
 
 	_button = Button.new()
