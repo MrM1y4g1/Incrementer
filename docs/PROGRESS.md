@@ -2,6 +2,38 @@
 
 Newest first. Screenshots are captured from the real game at 1280 × 720. The `--autoplay` flag fast-forwards a scripted player, so the later shots show a run in progress.
 
+## 18 Oct 2026 · M4: balance pass
+
+**What changed**
+
+- **Carry bonus:** Count per second × (1 + Carry earned)^12.5. Carry grows exponentially with the bits a run reaches, so this power law adds a fixed number of bits per doubling of Carry. That fits the register ladder, where every width is double the one before.
+- **One run per width.** Each Wide bus costs about what one full run at the previous width pays: 1, 32, 8,000 and 500 million Carry. Each Overflow now opens the next width instead of needing near-instant repeats at the same one.
+- **Gentler milestone Firmware** (Pipelining, Superscalar and Speculative execution now give the ×2 every 36, 32 and 28 units). At 20 units, the "more Count, more units, more doublings" loop nearly fed itself without limit, so late runs exploded while the 256-bit run crawled.
+- **Pacing checks in CI.** The simulator also measures the longest wait for a purchase in the first hour, and `--check` fails the build when pacing leaves the plan's windows. CI now runs the whole game to the ending on every push.
+
+**Simulated pacing** (scripted player, 4 clicks per second):
+
+| Measure | Simulated | Plan target |
+|---|---|---|
+| Longest wait for a purchase in the first hour | 52 s | ≤ 90 s |
+| First Overflow (64-bit full) | 49:27 | 40–60 min |
+| Second Overflow (128-bit full) | 1:11 | – |
+| Third Overflow (256-bit full) | 2:38 | – |
+| Fourth Overflow (512-bit full) | 5:52 | – |
+| V1 ending (1024-bit full) | 5:52 | 5–8 h (6:30) |
+
+**Known rough edges.** The 512-bit run takes about 3 hours, the longest of the game, but offline progress (24 hours with the Watchdog Firmware) covers most of it. The final 1024-bit run is nearly instant: it plays as a victory lap. Real players will choose different moments to Overflow, so these numbers need a human playtest.
+
+**256-bit run,** 2½ hours in.
+
+![256-bit run](screenshots/2026-10-18-m4-01-256-bit.png)
+
+**512-bit run,** 4½ hours in: almost full, with 604 million Carry waiting.
+
+![512-bit run](screenshots/2026-10-18-m4-02-512-bit.png)
+
+**Next (M5):** the real look. Clean-lined sci-fi art from plan section 4: the register matrix, polygon tier shapes, the fonts, motion and sound. The register display needs a new layout for 256 bits and up, where the cells are too small.
+
 ## 18 Oct 2026 · M3: Overflow, Carry, Firmware and the V1 ending
 
 **What's in**
