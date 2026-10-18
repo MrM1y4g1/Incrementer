@@ -208,9 +208,16 @@ static func buy(state: GameState, content: Content, index: int, mode: int) -> in
 	if n <= 0:
 		return 0
 	state.count = maxf(0.0, state.count - cost_of(state, content, index, n))
+	_add_bought(state, content, index, n)
+	return n
+
+
+## Adds bought units to a layer, and logs the run's first unit of it.
+static func _add_bought(state: GameState, content: Content, index: int, n: int) -> void:
+	if state.layer_bought[index] == 0:
+		state.record("layer", String(content.layers[index].id))
 	state.layer_bought[index] += n
 	state.layer_amount[index] += n
-	return n
 
 
 # --- Upgrades -------------------------------------------------------------------
@@ -234,6 +241,7 @@ static func buy_upgrade(state: GameState, upgrade: UpgradeDef) -> bool:
 	state.count -= upgrade.cost
 	state.upgrades.append(upgrade.id)
 	state.effects_dirty = true
+	state.record("upgrade", String(upgrade.id))
 	return true
 
 
@@ -283,6 +291,7 @@ static func widen(state: GameState, content: Content) -> bool:
 		return false
 	state.count -= widen_cost(state)
 	state.register_bits = Formulas.next_width(state.register_bits)
+	state.record("widen", state.register_bits)
 	return true
 
 
@@ -307,7 +316,9 @@ static func overflow(state: GameState, content: Content) -> float:
 	state.carry += gain
 	state.total_carry += gain
 	state.overflows += 1
-	state.runs.append({"time": state.run_time, "bits": log(state.run_peak) / log(2.0), "carry": gain})
+	var bits := log(state.run_peak) / log(2.0)
+	state.runs.append({"time": state.run_time, "bits": bits, "carry": gain})
+	state.record("overflow", {"bits": snappedf(bits, 0.1), "carry": gain, "run_seconds": snappedf(state.run_time, 0.1)})
 	while state.runs.size() > GameState.RUN_HISTORY_LIMIT:
 		state.runs.pop_front()
 
@@ -349,6 +360,7 @@ static func buy_firmware(state: GameState, content: Content, node: FirmwareDef) 
 		return false
 	state.carry -= node.cost
 	state.firmware.append(node.id)
+	state.record("firmware", String(node.id))
 	state.effects_dirty = true
 	refresh_effects(state, content)
 	# A Boot ROM takes effect immediately if the register is narrower than it.
@@ -387,8 +399,7 @@ static func run_autobuyers(state: GameState, content: Content) -> void:
 		var n := Formulas.max_affordable(layer.base_cost, layer.cost_growth, state.layer_bought[index], state.count * AUTOBUY_SPEND_SHARE)
 		if n > 0:
 			state.count = maxf(0.0, state.count - cost_of(state, content, index, n))
-			state.layer_bought[index] += n
-			state.layer_amount[index] += n
+			_add_bought(state, content, index, n)
 
 
 # --- The ending -----------------------------------------------------------------
@@ -399,4 +410,5 @@ static func check_ending(state: GameState) -> bool:
 		return false
 	state.ended = true
 	state.ended_time = state.play_time
+	state.record("ending")
 	return true

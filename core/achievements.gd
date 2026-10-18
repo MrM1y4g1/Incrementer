@@ -40,6 +40,7 @@ static func check(state: GameState, content: Content) -> Array[AchievementDef]:
 			continue
 		if is_met(state, achievement):
 			state.achievements.append(achievement.id)
+			state.record("achievement", String(achievement.id))
 			unlocked.append(achievement)
 	if not unlocked.is_empty():
 		state.effects_dirty = true

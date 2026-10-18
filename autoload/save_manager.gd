@@ -16,9 +16,11 @@ var _timer: Timer
 
 func _ready() -> void:
 	enabled = not OS.get_cmdline_user_args().has("--no-save")
+	if enabled:
+		load_game()
+	Game.state.record("session", version())
 	if not enabled:
 		return
-	load_game()
 	_timer = Timer.new()
 	_timer.wait_time = Settings.autosave_seconds
 	_timer.autostart = true
@@ -85,6 +87,7 @@ func import_text(text: String) -> String:
 	if loaded.is_empty():
 		return "That text isn't a save from this game. Check that you copied all of it."
 	Game.replace_state(loaded["state"])
+	Game.state.record("import", version())
 	if enabled:
 		save_game()
 	return ""
@@ -99,6 +102,7 @@ func start_over() -> void:
 			file.store_string(SaveCodec.encode(Game.state, Time.get_unix_time_from_system()))
 			file.close()
 	wipe()
+	Game.state.record("start over", version())
 	if enabled:
 		save_game()
 
@@ -112,6 +116,15 @@ func wipe() -> void:
 				DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 	Game.replace_state(GameState.new())
 	last_saved_unix = 0.0
+
+
+## The run log as CSV, for Save data → Copy run log.
+func run_log_csv() -> String:
+	return RunLog.to_csv(Game.state)
+
+
+func version() -> String:
+	return str(ProjectSettings.get_setting("application/config/version"))
 
 
 ## True on the Web when the browser won't keep files between visits (private windows, blocked storage).

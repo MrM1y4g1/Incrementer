@@ -7,8 +7,9 @@ extends RefCounted
 ##   1  M1: Count, register, layers, clicks, play time
 ##   2  M2: adds clock level, upgrades, achievements and total Count produced
 ##   3  M3: adds the run fields, Carry, Firmware, Overflows, run history, autobuyer switches and the ending
+##   4  1.1.0: adds the run log (events)
 
-const VERSION := 3
+const VERSION := 4
 
 
 static func encode(state: GameState, saved_at: float) -> String:
@@ -41,6 +42,8 @@ static func migrate(payload: Dictionary, from_version: int) -> Dictionary:
 			payload = _v1_to_v2(payload)
 		elif version == 2:
 			payload = _v2_to_v3(payload)
+		elif version == 3:
+			payload = _v3_to_v4(payload)
 		version += 1
 	payload["version"] = VERSION
 	return payload
@@ -74,5 +77,16 @@ static func _v2_to_v3(payload: Dictionary) -> Dictionary:
 	state["firmware"] = []
 	state["runs"] = []
 	state["ended"] = false
+	payload["state"] = state
+	return payload
+
+
+static func _v3_to_v4(payload: Dictionary) -> Dictionary:
+	var state_data: Variant = payload.get("state")
+	if typeof(state_data) != TYPE_DICTIONARY:
+		return payload
+	var state: Dictionary = state_data
+	# Nothing was logged before version 4, so the log starts empty.
+	state["events"] = []
 	payload["state"] = state
 	return payload

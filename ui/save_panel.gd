@@ -17,7 +17,7 @@ func _init() -> void:
 	add_child(root)
 
 	root.add_child(_label("SAVE DATA", 13, Palette.MUTED))
-	var help := _label("This text is your whole game. Copy it somewhere safe to back it up, or paste a saved copy here and press Import to load it.", 14, Palette.ICE)
+	var help := _label("This text is your whole game. Copy it somewhere safe to back it up, or paste a saved copy here and press Import to load it. Copy run log gives a list of what you bought and when, by play time; it stays on this computer unless you send it to someone.", 14, Palette.ICE)
 	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	root.add_child(help)
 
@@ -37,6 +37,7 @@ func _init() -> void:
 	root.add_child(buttons)
 	buttons.add_child(_button("Copy", _copy))
 	buttons.add_child(_button("Import", _import))
+	buttons.add_child(_button("Copy run log", _copy_log))
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	buttons.add_child(spacer)
@@ -55,6 +56,12 @@ func show_export(text: String) -> void:
 func _copy() -> void:
 	DisplayServer.clipboard_set(_text.text)
 	_status.text = "Copied."
+	_status.add_theme_color_override("font_color", Palette.MUTED)
+
+
+func _copy_log() -> void:
+	DisplayServer.clipboard_set(SaveManager.run_log_csv())
+	_status.text = "Copied the run log: %d events, as CSV." % Game.state.events.size()
 	_status.add_theme_color_override("font_color", Palette.MUTED)
 
 

@@ -6,6 +6,8 @@ extends RefCounted
 const LAYER_COUNT := 8
 ## How many finished runs the history keeps.
 const RUN_HISTORY_LIMIT := 20
+## How many run log events the save keeps. A playthrough to the ending makes about 600; the oldest drop off.
+const EVENT_LIMIT := 3000
 
 # --- This run (reset by an Overflow) ---
 var count := 0.0
@@ -37,6 +39,8 @@ var runs: Array[Dictionary] = []
 var autobuy := {"low": true, "high": true, "clock": true, "widen": true}
 var ended := false
 var ended_time := 0.0
+## The run log, oldest first: [play seconds, kind, detail]. See RunLog for the kinds.
+var events: Array = []
 
 # --- Derived by Economy.refresh_effects(). Not saved. ---
 var effects_dirty := true
@@ -64,6 +68,13 @@ func has_firmware_effect(effect: FirmwareDef.Effect) -> bool:
 	return firmware_effects.has(effect)
 
 
+## Adds an event to the run log at the current play time.
+func record(kind: String, detail: Variant = "") -> void:
+	events.append([snappedf(play_time, 0.1), kind, detail])
+	while events.size() > EVENT_LIMIT:
+		events.pop_front()
+
+
 func to_dict() -> Dictionary:
 	return {
 		"count": count,
@@ -87,6 +98,7 @@ func to_dict() -> Dictionary:
 		"autobuy": autobuy.duplicate(),
 		"ended": ended,
 		"ended_time": ended_time,
+		"events": events.duplicate(true),
 	}
 
 
@@ -134,6 +146,16 @@ static func from_dict(data: Dictionary) -> GameState:
 				s.runs.append({"time": float(run.get("time", 0.0)), "bits": float(run.get("bits", 0.0)), "carry": float(run.get("carry", 0.0))})
 		while s.runs.size() > RUN_HISTORY_LIMIT:
 			s.runs.pop_front()
+
+	var saved_events: Variant = data.get("events", [])
+	if saved_events is Array:
+		var list: Array = saved_events
+		for item: Variant in list:
+			# Keep only well-formed events: [seconds, kind, detail].
+			if item is Array and (item as Array).size() == 3 and typeof(item[0]) in [TYPE_FLOAT, TYPE_INT] and item[1] is String:
+				s.events.append([maxf(0.0, float(item[0])), item[1], item[2]])
+		while s.events.size() > EVENT_LIMIT:
+			s.events.pop_front()
 
 	var switches: Variant = data.get("autobuy", {})
 	if switches is Dictionary:

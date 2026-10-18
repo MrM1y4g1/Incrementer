@@ -35,6 +35,7 @@ Run from the repository root. `G=.tools/godot/Godot_v4.7.2-stable_win64_console.
 | Run all tests | `$G --headless --path . --script res://tests/run_tests.gd -- --no-save` |
 | Pacing check (first Overflow) | `$G --headless --path . --script res://tools/sim.gd -- --no-save --minutes=90` |
 | Pacing check (whole game) | `$G --headless --path . --script res://tools/sim.gd -- --no-save --until=ending --minutes=720` |
+| Run log of a simulated game | add `--log=builds/sim-run-log.csv` to the whole-game check, to compare with a player's log |
 | Windows build | `$G --headless --path . --export-release "Windows Desktop" builds/<version>/windows/Incrementer.exe` (one folder per version, so a build someone is playing is never overwritten; templates go in `.tools/godot/editor_data/export_templates/4.7.2.stable/`) |
 | Windows debug build (F3 debug panel) | `$G --headless --path . --export-debug "Windows Desktop" builds/<version>/windows-debug/Incrementer.exe` |
 | Web build | `$G --headless --path . --export-release "Web" builds/<version>/web/index.html` |
@@ -42,14 +43,14 @@ Run from the repository root. `G=.tools/godot/Godot_v4.7.2-stable_win64_console.
 | Screenshot | `$G --path . --resolution 1280x720 -- --no-save --autoplay=<seconds> --capture=docs/screenshots/<name>.png` |
 | Open the editor | `.tools/godot/Godot_v4.7.2-stable_win64.exe --path . --editor` |
 
-Dev flags go after `--`: `--no-save` (never read or write the save or settings), `--mute` (no sound; captures and headless runs are silent anyway), `--autoplay=<seconds>` (fast-forward the scripted player before the first frame), `--open=<views>` (comma-separated: `upgrades`, `stats`, `firmware`, `settings`, `save`, `overflow`, `overflow-fx`, `ending`, `debug`, `toast`), `--capture=<png>` (save a screenshot after a few frames, then quit). Captures need a real window, so they don't work with `--headless`. In debug builds, **F3** toggles the debug panel.
+Dev flags go after `--`: `--no-save` (never read or write the save or settings), `--mute` (no sound; captures and headless runs are silent anyway), `--autoplay=<seconds>` (fast-forward the scripted player before the first frame), `--open=<views>` (comma-separated: `title`, `upgrades`, `stats`, `firmware`, `settings`, `save`, `start-over`, `overflow`, `overflow-fx`, `ending`, `debug`, `toast`), `--capture=<png>` (save a screenshot after a few frames, then quit). `--autoplay` and `--capture` skip the start screen unless `--open=title` asks for it. Captures need a real window, so they don't work with `--headless`. In debug builds, **F3** toggles the debug panel.
 
 ## Layout
 
 ```
 autoload/          EventBus (signals), Settings (preferences in user://settings.cfg), ContentDB (loads and checks data),
                    Game (state + 20 Hz tick), SaveManager (JSON saves), Audio (sound effects and music)
-core/              Pure logic: Formulas, Economy, GameState, Content, Achievements, SaveCodec, NumberFormat, AutoPlayer
+core/              Pure logic: Formulas, Economy, GameState, Content, Achievements, SaveCodec, RunLog, NumberFormat, AutoPlayer
 data/defs/         Resource classes: LayerDef, UpgradeDef, AchievementDef, FirmwareDef
 data/layers/       One .tres per Software layer: most balance numbers live here
 data/upgrades/     One .tres per upgrade
@@ -69,16 +70,18 @@ builds/            Exports, one folder per version (git-ignored)
 
 ## Rules that keep the architecture honest
 
-1. **`Economy` is the only code that changes the numbers.** Live play, offline catch-up, the autoplayer, the simulator and the tests all call the same functions. Never add Count or units anywhere else.
-2. **`core/` never touches autoloads, nodes or files** (except `ContentLoader`, which only reads `res://`). That keeps it testable headless.
-3. **Content is data.** New layers, upgrades or Firmware nodes are `.tres` files with a Resource class in `data/defs/`. Balance changes are data changes; afterwards run `tools/sim.gd -- --no-save --until=ending --check`. It fails if the first Overflow leaves 40–60 min, the longest first-hour wait passes 90 s, the second run gets back to 64 bits in under 3 min, the ending leaves 5–8 h, or any of the faster Overflow strategies in `FASTER_PLAYERS` reaches the ending in under 5 h. The last check exists because 1.0.2 passed the others while a player who Overflowed whenever a run slowed down finished in under 2 h. CI runs the same check.
-4. **Saves are versioned.** Any change to `GameState.to_dict()` bumps `SaveCodec.VERSION` and adds a migration step plus a test that loads the old format.
-5. **The UI only asks and listens.** It calls `Game.click()`, `Game.buy()`, `Game.widen()`, reads `Game.state`, and listens to `EventBus`. It refreshes at 10 Hz, not every frame.
-6. **Floats stay finite.** Everything is capped by the register; the 1024-bit cap is `Formulas.MAX_FLOAT`. Test anything near 1e308.
-7. **Global boosts multiply the Count per second only.** Layers produce each other in a chain, so a multiplier on every layer compounds: ×2 on six active layers is roughly ×64. The clock, achievements and `ALL_MULTIPLIER` upgrades therefore apply to layer 1 only; `LAYER_MULTIPLIER` upgrades apply to their own layer.
-8. **Run state versus save state.** Fields in the "This run" block of `GameState` reset on an Overflow; everything else lasts the whole save. Firmware and Carry are permanent.
-9. **Multipliers stay finite.** `Formulas.MAX_MULTIPLIER` caps every multiplier and layer amounts stop at `MAX_FLOAT`, because INF × 0 is NaN and NaN would corrupt a save.
-10. **Content is validated at startup.** `Content.validate()` lists problems (duplicate ids, missing layers, bad costs); `ContentDB` stops debug builds on any. `tests/test_content.gd` runs the same check.
+1. **`Economy` is the only code that changes the numbers.** Live play, catch-up after a long frame, the autoplayer, the simulator and the tests all call the same functions. Never add Count or units anywhere else.
+2. **The game only runs while it's open.** There is no offline progress: a save carries on from where it was saved. Long gaps while the game is open (a background tab, a minimised window) are caught up with `Economy.catch_up`.
+3. **`core/` never touches autoloads, nodes or files** (except `ContentLoader`, which only reads `res://`). That keeps it testable headless.
+4. **Content is data.** New layers, upgrades or Firmware nodes are `.tres` files with a Resource class in `data/defs/`. Balance changes are data changes; afterwards run `tools/sim.gd -- --no-save --until=ending --check`. It fails if the first Overflow leaves 40–60 min, the longest first-hour wait passes 90 s, the second run gets back to 64 bits in under 3 min, the ending leaves 5–8 h, or any of the faster Overflow strategies in `FASTER_PLAYERS` reaches the ending in under 5 h. The last check exists because 1.0.2 passed the others while a player who Overflowed whenever a run slowed down finished in under 2 h. CI runs the same check.
+5. **Saves are versioned.** Any change to `GameState.to_dict()` bumps `SaveCodec.VERSION` and adds a migration step plus a test that loads the old format.
+6. **The run log stays on the player's machine.** `GameState.events` records what the player did and when, by play time (see `RunLog`). The game never sends it anywhere; players can copy it from Save data and choose to share it. New player actions get a `state.record(...)` in `Economy`, so the simulator logs them too.
+7. **The UI only asks and listens.** It calls `Game.click()`, `Game.buy()`, `Game.widen()`, reads `Game.state`, and listens to `EventBus`. It refreshes at 10 Hz, not every frame.
+8. **Floats stay finite.** Everything is capped by the register; the 1024-bit cap is `Formulas.MAX_FLOAT`. Test anything near 1e308.
+9. **Global boosts multiply the Count per second only.** Layers produce each other in a chain, so a multiplier on every layer compounds: ×2 on six active layers is roughly ×64. The clock, achievements and `ALL_MULTIPLIER` upgrades therefore apply to layer 1 only; `LAYER_MULTIPLIER` upgrades apply to their own layer.
+10. **Run state versus save state.** Fields in the "This run" block of `GameState` reset on an Overflow; everything else lasts the whole save. Firmware and Carry are permanent.
+11. **Multipliers stay finite.** `Formulas.MAX_MULTIPLIER` caps every multiplier and layer amounts stop at `MAX_FLOAT`, because INF × 0 is NaN and NaN would corrupt a save.
+12. **Content is validated at startup.** `Content.validate()` lists problems (duplicate ids, missing layers, bad costs); `ContentDB` stops debug builds on any. `tests/test_content.gd` runs the same check.
 
 ## Code style
 
@@ -115,5 +118,5 @@ Clean-lined sci-fi: thin glowing lines on a deep blue-black background, panels w
 
 ## Git
 
-- Small commits with messages in the imperative ("Add offline catch-up"). Run the tests before every commit.
+- Small commits with messages in the imperative ("Add the run log"). Run the tests before every commit.
 - `main` is the working branch for now. Don't commit `.tools/`, `.godot/` or `builds/`.

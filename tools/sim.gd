@@ -4,7 +4,8 @@ extends SceneTree
 ##   godot --headless --path . --script res://tools/sim.gd -- --no-save --minutes=90
 ##   godot --headless --path . --script res://tools/sim.gd -- --no-save --until=ending --minutes=900
 ## --until=overflow (the default) stops at the first full 64-bit register; --until=ending plays on
-## through Overflows and Firmware to the V1 ending.
+## through Overflows and Firmware to the V1 ending. --log=<csv path> writes the run log, to compare with
+## a player's (Save data → Copy run log).
 
 ## Targets in seconds of total play, from the plan.
 const TARGETS := {
@@ -34,11 +35,14 @@ const ENDING_CEILING := 8.0 * 3600.0
 func _init() -> void:
 	var minutes := 90.0
 	var until := "overflow"
+	var log_path := ""
 	for arg: String in OS.get_cmdline_user_args():
 		if arg.begins_with("--minutes="):
 			minutes = arg.get_slice("=", 1).to_float()
 		elif arg.begins_with("--until="):
 			until = arg.get_slice("=", 1)
+		elif arg.begins_with("--log="):
+			log_path = arg.get_slice("=", 1)
 
 	var content := Content.load_from("res://data")
 	var state := GameState.new()
@@ -96,6 +100,9 @@ func _init() -> void:
 	print("upgrades %d of %d, achievements %d of %d, Firmware %d of %d, Carry %s (%s earned)" % [
 		state.upgrades.size(), content.upgrades.size(), state.achievements.size(), content.achievements.size(),
 		state.firmware.size(), content.firmware.size(), NumberFormat.amount(state.carry), NumberFormat.amount(state.total_carry)])
+
+	if log_path != "":
+		_write_log(state, log_path)
 
 	# With --check, pacing outside the plan's windows fails the run, so CI catches balance regressions.
 	var problems := PackedStringArray()
@@ -158,6 +165,20 @@ func _ending_with(content: Content, rule: String) -> float:
 			Economy.overflow(state, content)
 			AutoPlayer.buy_firmware(state, content)
 	return -1.0
+
+## Writes the run log as CSV. A relative path is relative to the project folder.
+func _write_log(state: GameState, path: String) -> void:
+	var full := path
+	if full.is_relative_path():
+		full = ProjectSettings.globalize_path("res://").path_join(full)
+	var file := FileAccess.open(full, FileAccess.WRITE)
+	if file == null:
+		printerr("Could not write %s: %s" % [full, error_string(FileAccess.get_open_error())])
+		return
+	file.store_string(RunLog.to_csv(state))
+	file.close()
+	print("run log: %d events written to %s" % [state.events.size(), full])
+
 
 ## Changes whenever the player buys, widens, overclocks or buys an upgrade.
 func _purchases(state: GameState) -> int:

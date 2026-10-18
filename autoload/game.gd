@@ -91,6 +91,8 @@ func buy_firmware(id: StringName) -> bool:
 
 
 func set_autobuy(switch: String, on: bool) -> void:
+	if bool(state.autobuy.get(switch, true)) != on:
+		state.record("autobuy", "%s %s" % [switch, "on" if on else "off"])
 	state.autobuy[switch] = on
 
 
