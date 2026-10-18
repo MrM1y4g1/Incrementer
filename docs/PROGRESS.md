@@ -2,6 +2,37 @@
 
 Newest first. Screenshots are captured from the real game at 1280 × 720. The `--autoplay` flag fast-forwards a scripted player, so the later shots show a run in progress.
 
+## 18 Oct 2026 · 1.0.1: the Carry ripple
+
+**What you found:** after an Overflow, buying one Incrementer jumped straight to hundreds of millions per second, and four minutes into the new run the Count was at 9 Qi per second. Nothing from the old run carried over. The cause was the Carry bonus: Count per second × (1 + Carry earned)^12.5, which is ×920 K from just 2 Carry. Count pays for every layer, so a bonus that size snowballed through purchases, and the scripted player was back at 64 bits 6 seconds into its second run. Limiting the bonus by register width didn't help: even ×16 on an 8-bit register snowballed, and the second run was still back at 64 bits in 23 seconds.
+
+**The fix:** the bonus now **ripples in**. It's ×1 when a run starts and gains the same number of bits every second until it's complete after 10 minutes. Time can't snowball, so each run replays the old widths in a few minutes, faster each time, then meets the new width at full strength.
+
+- The status bar shows the bonus as it grows, for example "Carry bonus ×21, ×920 K in 7m 46s".
+- The Overflow confirmation says what the next run's bonus will be, and how it ripples in.
+- Offline progress keeps the ripple going, so an Overflow followed by a night away still gets the full bonus.
+- The simulator now fails if the second run gets back to 64 bits in under 3 minutes.
+
+**Two minutes into the second run:** a 16-bit register, 6.33 K per second, and the bonus at ×21 on its way to ×920 K.
+
+![Two minutes into the second run](screenshots/2026-10-18-m6-04-carry-ripple.png)
+
+**The Overflow confirmation** explains the next run's bonus.
+
+![Overflow confirmation](screenshots/2026-10-18-m6-05-overflow-confirm.png)
+
+**Simulated runs, before and after:**
+
+| Run | 1.0.0: back at the old width | 1.0.0: run length | 1.0.1: back at the old width | 1.0.1: run length |
+|---|---|---|---|---|
+| 2 (to 128 bits) | 6 s | 22 min | 4 m 28 s | 29 min |
+| 3 (to 256 bits) | 4 s | 1 h 27 | 3 m 23 s | 1 h 34 |
+| 4 (to 512 bits) | 3 s | 3 h 14 | 2 m 45 s | 3 h 22 |
+| 5 (to 1024 bits) | 3 s | 4 s | 1 m 50 s | 9 min |
+| V1 ending | | 5 h 52 | | 6 h 23 |
+
+The first run is unchanged (first Overflow at 49:27). The run to 512 bits is still the longest at over three hours; that's next in line if playtesting finds it drags.
+
 ## 18 Oct 2026 · M6: release preparation, version 1.0.0
 
 **What's in**
