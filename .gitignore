@@ -3,7 +3,8 @@
 /android/
 
 # Exported builds
-/builds/
+/builds/*
+!/builds/.gdignore
 
 # Local tools: the Godot binary and its self-contained editor data
 /.tools/
