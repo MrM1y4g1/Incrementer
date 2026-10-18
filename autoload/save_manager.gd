@@ -1,11 +1,10 @@
 extends Node
-## Loads the save at startup, autosaves every 30 seconds, and saves on quit or when the window loses focus.
+## Loads the save at startup, autosaves on the interval set in Settings, and saves on quit or when the window loses focus.
 ## Pass `--no-save` after `--` on the command line to run without reading or writing the save file.
 
 const SAVE_PATH := "user://save.json"
 const BACKUP_PATH := "user://save.bak"
 const TEMP_PATH := "user://save.tmp"
-const AUTOSAVE_SECONDS := 30.0
 
 var enabled := true
 ## Filled in when a save is loaded, so the UI can show a "While you were away" report.
@@ -13,17 +12,20 @@ var offline_seconds := 0.0
 var offline_gain := 0.0
 var last_saved_unix := 0.0
 
+var _timer: Timer
+
 
 func _ready() -> void:
 	enabled = not OS.get_cmdline_user_args().has("--no-save")
 	if not enabled:
 		return
 	load_game()
-	var timer := Timer.new()
-	timer.wait_time = AUTOSAVE_SECONDS
-	timer.autostart = true
-	timer.timeout.connect(save_game)
-	add_child(timer)
+	_timer = Timer.new()
+	_timer.wait_time = Settings.autosave_seconds
+	_timer.autostart = true
+	_timer.timeout.connect(save_game)
+	add_child(_timer)
+	Settings.changed.connect(func() -> void: _timer.wait_time = Settings.autosave_seconds)
 
 
 func _notification(what: int) -> void:
@@ -109,7 +111,7 @@ func status_text() -> String:
 	if not enabled:
 		return "Saving off (--no-save)"
 	if last_saved_unix <= 0.0:
-		return "Autosave every %d s" % int(AUTOSAVE_SECONDS)
+		return "Autosave every %d s" % int(Settings.autosave_seconds)
 	var ago := Time.get_unix_time_from_system() - last_saved_unix
 	return "Saved %s ago" % NumberFormat.duration(ago)
 

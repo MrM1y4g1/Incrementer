@@ -1,25 +1,33 @@
 class_name RegisterDisplay
 extends Control
-## Draws the register: one cell per bit, most significant bit on the left.
-## Up to 64 bits sit in one row; wider registers stack into rows of 32 (32 × 32 at 1024 bits).
-## A float keeps 53 significant bits, so on wider registers only the top 53 lit cells are exact.
+## Draws the register: one cell per bit, most significant bit first.
+## Up to 64 bits sit in one row; wider registers stack into rows of 64.
+## A float keeps 53 significant bits, so only the top 53 bits of the Count are shown exactly.
+## Lower bits of a large Count shimmer, because they change too fast and too finely to show.
+## Cells above the Count's highest bit are empty, so the grid fills up as the run goes on.
 
 const ROW_LIMIT := 64
-const GRID_COLUMNS := 32
 const MAX_CELL_WIDTH := 56.0
 
 var _bits := 8
 var _value := 0.0
 var _full := false
+var _flash_color := Color(1, 1, 1, 0)
 
 
 func show_value(bits: int, value: float, full: bool) -> void:
-	if bits == _bits and value == _value and full == _full:
-		return
 	_bits = bits
 	_value = value
 	_full = full
 	queue_redraw()
+
+
+## Briefly lights the whole register in a colour, for widening and the Overflow.
+func flash(color: Color) -> void:
+	_flash_color = color
+	var tween := create_tween()
+	tween.tween_property(self, "_flash_color:a", 0.0, 0.6).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_method(func(_t: float) -> void: queue_redraw(), 0.0, 1.0, 0.6)
 
 
 func _notification(what: int) -> void:
@@ -28,27 +36,45 @@ func _notification(what: int) -> void:
 
 
 func _draw() -> void:
-	var columns := _bits if _bits <= ROW_LIMIT else GRID_COLUMNS
+	var columns := mini(_bits, ROW_LIMIT)
 	var rows := ceili(float(_bits) / columns)
-	var gap := 6.0 if columns <= 16 else 3.0
+	var gap := 6.0 if columns <= 16 else (3.0 if rows == 1 else 2.0)
 	var cell_w := minf((size.x - gap * (columns - 1)) / columns, MAX_CELL_WIDTH)
-	var cell_h := minf((size.y - gap * (rows - 1)) / rows, cell_w * 1.5 if rows == 1 else cell_w)
+	var cell_h := minf(size.y, cell_w * 1.5) if rows == 1 else (size.y - gap * (rows - 1)) / rows
 	var grid_h := cell_h * rows + gap * (rows - 1)
 	var origin := Vector2(0.0, (size.y - grid_h) / 2.0)
-	var lit := Palette.AMBER if _full else Palette.CYAN
-	var glow := Color(lit, 0.16)
+	var magnitude := floori(log(_value) / log(2.0)) if _value >= 1.0 else -1
+	var exact_from := magnitude - 52
+	var tick := int(Time.get_ticks_msec() / 120)
+	var outline := cell_w >= 8.0 and cell_h >= 8.0
 
 	for i: int in _bits:
+		var bit := _bits - 1 - i
 		var column := i % columns
 		var row := floori(float(i) / columns)
 		var rect := Rect2(origin + Vector2(column * (cell_w + gap), row * (cell_h + gap)), Vector2(cell_w, cell_h))
-		# A full register is all ones. Past 53 bits the cap itself can't be stored exactly as a float,
-		# so reading the bits back would show it as empty.
-		if _full or _is_set(_value, _bits - 1 - i):
-			draw_rect(rect.grow(2.0), glow)
-			draw_rect(rect, lit)
+		var color: Color
+		if _full:
+			color = Palette.AMBER
+		elif bit > magnitude:
+			color = Color(0, 0, 0, 0)
+		elif bit >= exact_from:
+			color = Palette.CYAN if _is_set(_value, bit) else Color(Palette.CYAN, 0.08)
 		else:
+			# Below float precision: a gentle shimmer instead of fake digits.
+			var noise := float(((bit * 7919 + tick * 104729) % 97)) / 97.0
+			color = Color(Palette.CYAN, 0.1 + noise * 0.25)
+
+		if color.a > 0.0:
+			if color.a >= 0.99 and outline:
+				draw_rect(rect.grow(2.0), Color(color, 0.16))
+			draw_rect(rect, color)
+		if outline and color.a < 0.99:
 			draw_rect(rect, Palette.LINE, false, 1.0)
+		elif not outline and color.a == 0.0:
+			draw_rect(rect, Color(Palette.LINE, 0.6))
+		if _flash_color.a > 0.0:
+			draw_rect(rect, _flash_color)
 
 
 static func _is_set(value: float, bit: int) -> bool:

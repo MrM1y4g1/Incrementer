@@ -1,19 +1,20 @@
 extends Control
-## The grey-box main screen: register on top; Increment, Widen, Overclock and Overflow in the middle;
-## parts and upgrades on the right; a status bar with Firmware, stats and save data along the bottom.
-## The layout follows the wireframe in plan section 4; the look is a stand-in until M5.
+## The main screen, laid out as in the wireframe in plan section 4: the register and Count readout on
+## top, the schematic of the machine in the middle with the actions beneath it, parts and upgrades on
+## the right, and a status bar along the bottom.
 ##
+## Click the register or press Space to increment. F3 shows the debug panel in debug builds.
 ## Dev flags, passed after `--` on the command line:
-##   --no-save              do not read or write the save file (handled by SaveManager)
+##   --no-save              do not read or write the save or settings (handled by SaveManager, Settings)
+##   --mute                 no sound (also implied by --capture)
 ##   --autoplay=<seconds>   fast-forward a scripted player before the first frame
 ##   --open=<views>         open views at start, comma-separated:
-##                          upgrades, stats, firmware, save, overflow, ending, debug, toast
+##                          upgrades, stats, firmware, settings, save, overflow, ending, debug, toast
 ##   --capture=<png path>   save a screenshot after a few frames, then quit
-## In debug builds, F3 shows the debug panel.
 
 const REFRESH_SECONDS := 0.1
 const OFFLINE_REPORT_MIN_SECONDS := 60.0
-const SIDE_WIDTH := 480.0
+const SIDE_WIDTH := 470.0
 const TOAST_SECONDS := 4.0
 
 var _mode: int = Economy.BuyMode.ONE
@@ -25,11 +26,11 @@ var _bits_label: Label
 var _count_label: Label
 var _rate_label: Label
 var _boost_label: Label
+var _schematic: SchematicView
 var _increment_button: Button
 var _widen_button: Button
 var _clock_button: Button
 var _overflow_button: Button
-var _stats_label: Label
 var _status_label: Label
 var _firmware_button: Button
 var _parts_tab: Button
@@ -41,6 +42,7 @@ var _upgrades_empty: Label
 var _rows: Array[LayerRow] = []
 var _cards: Array[UpgradeCard] = []
 var _toasts: VBoxContainer
+var _fx: FxLayer
 var _debug_panel: DebugPanel
 
 # Overlays: only one is open at a time, over a shared backdrop.
@@ -48,6 +50,7 @@ var _backdrop: ColorRect
 var _overlays: Array[Control] = []
 var _stats_panel: StatsPanel
 var _firmware_panel: FirmwarePanel
+var _settings_panel: SettingsPanel
 var _save_panel: SavePanel
 var _ending_panel: EndingPanel
 var _confirm_panel: PanelContainer
@@ -61,7 +64,10 @@ func _ready() -> void:
 	_build()
 	EventBus.achievement_unlocked.connect(_on_achievement)
 	EventBus.overflowed.connect(_on_overflowed)
+	EventBus.register_widened.connect(_on_widened)
 	EventBus.game_ended.connect(func() -> void: _open(_ending_panel))
+	Settings.changed.connect(_apply_settings)
+	_apply_settings()
 	_apply_dev_args()
 
 	var timer := Timer.new()
@@ -78,7 +84,13 @@ func _ready() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	var key := event as InputEventKey
-	if key == null or not key.pressed or key.echo:
+	if key == null or not key.pressed:
+		return
+	if key.keycode == KEY_SPACE and not _backdrop.visible:
+		_on_increment()
+		get_viewport().set_input_as_handled()
+		return
+	if key.echo:
 		return
 	if key.keycode == KEY_F3 and _debug_panel != null:
 		_debug_panel.visible = not _debug_panel.visible
@@ -97,49 +109,62 @@ func _build() -> void:
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	for side: String in ["margin_left", "margin_top", "margin_right", "margin_bottom"]:
-		margin.add_theme_constant_override(side, 24)
+		margin.add_theme_constant_override(side, 20)
 	add_child(margin)
 
 	var root := VBoxContainer.new()
-	root.add_theme_constant_override("separation", 16)
+	root.add_theme_constant_override("separation", 14)
 	margin.add_child(root)
 	root.add_child(_build_top())
 	root.add_child(_build_middle())
 	root.add_child(_build_status_bar())
 
+	_fx = FxLayer.new()
+	add_child(_fx)
 	_build_overlays()
 
 
 func _build_top() -> Control:
 	var top := HBoxContainer.new()
-	top.add_theme_constant_override("separation", 16)
+	top.add_theme_constant_override("separation", 14)
 
-	var register_panel := PanelContainer.new()
+	var register_panel := FramePanel.new()
 	register_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	register_panel.custom_minimum_size = Vector2(0, 150)
+	register_panel.custom_minimum_size = Vector2(0, 156)
+	register_panel.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	register_panel.tooltip_text = "Click the register, or press Space, to increment"
+	register_panel.gui_input.connect(func(event: InputEvent) -> void:
+		var click := event as InputEventMouseButton
+		if click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT:
+			_on_increment())
 	top.add_child(register_panel)
 	var register_box := VBoxContainer.new()
 	register_box.add_theme_constant_override("separation", 8)
+	register_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	register_panel.add_child(register_box)
-	_register_label = _label("", 13, Palette.MUTED)
+	_register_label = _heading("")
 	register_box.add_child(_register_label)
 	_register = RegisterDisplay.new()
 	_register.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_register.custom_minimum_size = Vector2(0, 64)
+	_register.custom_minimum_size = Vector2(0, 70)
+	_register.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	register_box.add_child(_register)
 	_bits_label = _label("", 13, Palette.MUTED)
+	_bits_label.add_theme_font_override("font", Fonts.mono())
 	register_box.add_child(_bits_label)
 
-	var count_panel := PanelContainer.new()
-	count_panel.custom_minimum_size = Vector2(SIDE_WIDTH, 150)
+	var count_panel := FramePanel.new()
+	count_panel.custom_minimum_size = Vector2(SIDE_WIDTH, 156)
 	top.add_child(count_panel)
 	var count_box := VBoxContainer.new()
 	count_box.add_theme_constant_override("separation", 0)
 	count_panel.add_child(count_box)
-	count_box.add_child(_label("COUNT", 13, Palette.MUTED))
-	_count_label = _label("0", 44, Palette.CYAN)
+	count_box.add_child(_heading("COUNT"))
+	_count_label = _label("0", 46, Palette.CYAN)
+	_count_label.add_theme_font_override("font", Fonts.readout())
 	count_box.add_child(_count_label)
-	_rate_label = _label("", 16, Palette.ICE)
+	_rate_label = _label("", 15, Palette.ICE)
+	_rate_label.add_theme_font_override("font", Fonts.mono())
 	count_box.add_child(_rate_label)
 	_boost_label = _label("", 13, Palette.MUTED)
 	count_box.add_child(_boost_label)
@@ -149,35 +174,50 @@ func _build_top() -> Control:
 func _build_middle() -> Control:
 	var middle := HBoxContainer.new()
 	middle.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	middle.add_theme_constant_override("separation", 16)
+	middle.add_theme_constant_override("separation", 14)
 
-	var center := PanelContainer.new()
-	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	middle.add_child(center)
-	var center_box := VBoxContainer.new()
-	center_box.alignment = BoxContainer.ALIGNMENT_CENTER
-	center_box.add_theme_constant_override("separation", 12)
-	center.add_child(center_box)
+	var machine := FramePanel.new()
+	machine.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	middle.add_child(machine)
+	var machine_box := VBoxContainer.new()
+	machine_box.add_theme_constant_override("separation", 10)
+	machine.add_child(machine_box)
+	_schematic = SchematicView.new()
+	_schematic.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_schematic.state = Game.state
+	_schematic.content = Game.content
+	machine_box.add_child(_schematic)
 
-	_increment_button = _big_button(96, 28, _on_increment)
-	center_box.add_child(_increment_button)
-	_widen_button = _big_button(48, 16, _on_widen)
-	center_box.add_child(_widen_button)
-	_clock_button = _big_button(48, 16, _on_overclock)
-	center_box.add_child(_clock_button)
-	_overflow_button = _big_button(48, 16, _ask_overflow)
+	var actions := HBoxContainer.new()
+	actions.add_theme_constant_override("separation", 8)
+	machine_box.add_child(actions)
+	_increment_button = Button.new()
+	_increment_button.custom_minimum_size = Vector2(196, 96)
+	_increment_button.add_theme_font_override("font", Fonts.readout())
+	_increment_button.add_theme_font_size_override("font_size", 20)
+	_increment_button.pressed.connect(_on_increment)
+	actions.add_child(_increment_button)
+	var side_actions := VBoxContainer.new()
+	side_actions.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	side_actions.add_theme_constant_override("separation", 8)
+	actions.add_child(side_actions)
+	var pair := HBoxContainer.new()
+	pair.add_theme_constant_override("separation", 8)
+	side_actions.add_child(pair)
+	_widen_button = _action_button(_on_widen)
+	pair.add_child(_widen_button)
+	_clock_button = _action_button(_on_overclock)
+	pair.add_child(_clock_button)
+	_overflow_button = _action_button(_ask_overflow)
 	_overflow_button.theme_type_variation = &"OverflowButton"
-	center_box.add_child(_overflow_button)
-	_stats_label = _label("", 13, Palette.MUTED)
-	_stats_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	center_box.add_child(_stats_label)
+	side_actions.add_child(_overflow_button)
 
 	middle.add_child(_build_side_panel())
 	return middle
 
 
 func _build_side_panel() -> Control:
-	var side := PanelContainer.new()
+	var side := FramePanel.new()
 	side.custom_minimum_size = Vector2(SIDE_WIDTH, 0)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 6)
@@ -200,13 +240,8 @@ func _build_side_panel() -> Control:
 	header.add_child(_mode_box)
 	var modes := ButtonGroup.new()
 	for mode: int in [Economy.BuyMode.ONE, Economy.BuyMode.TEN, Economy.BuyMode.MAX]:
-		var mode_button := Button.new()
-		mode_button.toggle_mode = true
-		mode_button.button_group = modes
-		mode_button.button_pressed = mode == _mode
-		mode_button.text = "Max" if mode == Economy.BuyMode.MAX else "×%d" % mode
-		mode_button.custom_minimum_size = Vector2(52, 0)
-		mode_button.add_theme_font_size_override("font_size", 13)
+		var mode_button := _tab_button("Max" if mode == Economy.BuyMode.MAX else "×%d" % mode, modes, mode == _mode)
+		mode_button.custom_minimum_size = Vector2(50, 0)
 		mode_button.pressed.connect(_on_mode.bind(mode))
 		_mode_box.add_child(mode_button)
 
@@ -225,7 +260,7 @@ func _build_side_panel() -> Control:
 	box.add_child(_upgrades_scroll)
 	var upgrades_list := _list()
 	_upgrades_scroll.add_child(upgrades_list)
-	_upgrades_empty = _label("No upgrades available yet. Buy more layers or widen the register.", 13, Palette.MUTED)
+	_upgrades_empty = _label("No upgrades available yet. Buy more layers or widen the register.", 14, Palette.MUTED)
 	_upgrades_empty.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	upgrades_list.add_child(_upgrades_empty)
 	for upgrade: UpgradeDef in Game.content.upgrades:
@@ -240,18 +275,23 @@ func _build_side_panel() -> Control:
 
 
 func _build_status_bar() -> Control:
-	var bar := PanelContainer.new()
+	var bar := FramePanel.new()
+	bar.bracket_color = Color(Palette.LINE, 0.9)
 	var box := HBoxContainer.new()
 	box.add_theme_constant_override("separation", 8)
 	bar.add_child(box)
 	_status_label = _label("", 13, Palette.MUTED)
+	_status_label.add_theme_font_override("font", Fonts.mono())
 	_status_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	box.add_child(_status_label)
 	_firmware_button = _small_button("Firmware", func() -> void: _open(_firmware_panel))
 	box.add_child(_firmware_button)
-	box.add_child(_small_button("Stats and achievements", func() -> void: _open(_stats_panel)))
+	box.add_child(_small_button("Stats", func() -> void: _open(_stats_panel)))
+	box.add_child(_small_button("Settings", func() -> void: _open(_settings_panel)))
 	box.add_child(_small_button("Save data", func() -> void: _open(_save_panel)))
-	box.add_child(_label("  v%s" % ProjectSettings.get_setting("application/config/version"), 13, Palette.MUTED))
+	var version := _label("  v%s" % ProjectSettings.get_setting("application/config/version"), 12, Palette.MUTED)
+	version.add_theme_font_override("font", Fonts.mono())
+	box.add_child(version)
 	return bar
 
 
@@ -276,6 +316,10 @@ func _build_overlays() -> void:
 		_refresh())
 	_add_overlay(_firmware_panel, Vector2(1140, 620))
 
+	_settings_panel = SettingsPanel.new()
+	_settings_panel.closed.connect(_close_overlays)
+	_add_overlay(_settings_panel, Vector2(620, 0))
+
 	_save_panel = SavePanel.new()
 	_save_panel.closed.connect(_close_overlays)
 	_add_overlay(_save_panel, Vector2(720, 420))
@@ -290,8 +334,10 @@ func _build_overlays() -> void:
 	var confirm_box := VBoxContainer.new()
 	confirm_box.add_theme_constant_override("separation", 14)
 	_confirm_panel.add_child(confirm_box)
-	confirm_box.add_child(_label("OVERFLOW?", 13, Palette.MAGENTA))
-	_confirm_label = _label("", 16, Palette.ICE)
+	var confirm_title := _heading("OVERFLOW?")
+	confirm_title.add_theme_color_override("font_color", Palette.MAGENTA)
+	confirm_box.add_child(confirm_title)
+	_confirm_label = _label("", 17, Palette.ICE)
 	_confirm_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	confirm_box.add_child(_confirm_label)
 	var confirm_buttons := HBoxContainer.new()
@@ -311,7 +357,7 @@ func _build_overlays() -> void:
 	var offline_box := VBoxContainer.new()
 	offline_box.add_theme_constant_override("separation", 12)
 	_offline_panel.add_child(offline_box)
-	offline_box.add_child(_label("WHILE YOU WERE AWAY", 13, Palette.MUTED))
+	offline_box.add_child(_heading("WHILE YOU WERE AWAY"))
 	_offline_label = _label("", 18, Palette.ICE)
 	_offline_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	offline_box.add_child(_offline_label)
@@ -330,7 +376,7 @@ func _build_overlays() -> void:
 	if OS.is_debug_build():
 		_debug_panel = DebugPanel.new()
 		_debug_panel.visible = false
-		_debug_panel.position = Vector2(40, 206)
+		_debug_panel.position = Vector2(40, 200)
 		add_child(_debug_panel)
 
 
@@ -347,11 +393,12 @@ func _add_overlay(panel: Control, min_size: Vector2) -> void:
 	_overlays.append(panel)
 
 
-func _big_button(height: float, font_size: int, action: Callable) -> Button:
+func _action_button(action: Callable) -> Button:
 	var button := Button.new()
-	button.custom_minimum_size = Vector2(380, height)
-	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	button.add_theme_font_size_override("font_size", font_size)
+	button.custom_minimum_size = Vector2(0, 44)
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.add_theme_font_size_override("font_size", 15)
+	button.clip_text = true
 	button.pressed.connect(action)
 	return button
 
@@ -359,7 +406,7 @@ func _big_button(height: float, font_size: int, action: Callable) -> Button:
 func _small_button(text: String, action: Callable) -> Button:
 	var button := Button.new()
 	button.text = text
-	button.add_theme_font_size_override("font_size", 13)
+	button.add_theme_font_size_override("font_size", 14)
 	button.pressed.connect(action)
 	return button
 
@@ -370,7 +417,7 @@ func _tab_button(text: String, group: ButtonGroup, pressed: bool) -> Button:
 	button.toggle_mode = true
 	button.button_group = group
 	button.button_pressed = pressed
-	button.add_theme_font_size_override("font_size", 13)
+	button.add_theme_font_size_override("font_size", 14)
 	return button
 
 
@@ -396,12 +443,19 @@ func _label(text: String, font_size: int, color: Color) -> Label:
 	return label
 
 
+func _heading(text: String) -> Label:
+	var label := _label(text, 12, Palette.MUTED)
+	label.add_theme_font_override("font", Fonts.heading())
+	return label
+
+
 # --- Updates ------------------------------------------------------------------
 
 func _refresh() -> void:
 	var state := Game.state
 	var content := Game.content
 	Economy.refresh_effects(state, content)
+	_schematic.state = state
 	var full := Economy.is_full(state)
 	var cap := Formulas.register_cap(state.register_bits)
 
@@ -424,13 +478,12 @@ func _refresh() -> void:
 		_bits_label.text = "%.1f of %d bits used" % [log(state.count + 1.0) / log(2.0), state.register_bits]
 		_bits_label.add_theme_color_override("font_color", Palette.MUTED)
 
-	_increment_button.text = "INCREMENT   +%s" % NumberFormat.amount(Economy.click_value(state, content))
+	_increment_button.text = "INCREMENT\n+%s" % NumberFormat.amount(Economy.click_value(state, content))
 	_refresh_widen(state, content)
 	_refresh_clock(state, cap)
 	_refresh_overflow(state, content)
 
-	_stats_label.text = "Clicks %d   ·   Run %s   ·   Played %s" % [state.total_clicks, NumberFormat.duration(state.run_time), NumberFormat.duration(state.play_time)]
-	_status_label.text = SaveManager.status_text()
+	_status_label.text = "Run %s  ·  played %s  ·  %s" % [NumberFormat.duration(state.run_time), NumberFormat.duration(state.play_time), SaveManager.status_text()]
 	_firmware_button.visible = state.total_carry > 0.0 or not state.firmware.is_empty()
 
 	# Parts: the unlocked layers plus the next one, so the list grows as the run does.
@@ -471,7 +524,7 @@ func _refresh_widen(state: GameState, content: Content) -> void:
 		_widen_button.text = "%d-bit needs %s" % [next, _wide_bus_name(next, content)]
 		_widen_button.disabled = true
 	else:
-		_widen_button.text = "WIDEN TO %d-BIT   %s" % [next, NumberFormat.amount(Economy.widen_cost(state))]
+		_widen_button.text = "WIDEN → %d-BIT   %s" % [next, NumberFormat.amount(Economy.widen_cost(state))]
 		_widen_button.disabled = not Economy.can_widen(state, content)
 
 
@@ -481,23 +534,21 @@ func _refresh_clock(state: GameState, cap: float) -> void:
 		_clock_button.text = "OVERCLOCK   needs %d-bit" % Formulas.width_for(clock_cost)
 		_clock_button.disabled = true
 		return
-	_clock_button.text = "OVERCLOCK  %s → %s Hz   %s" % [
-		NumberFormat.rate(Formulas.clock_multiplier(state.clock_level)),
+	_clock_button.text = "OVERCLOCK → %s Hz   %s" % [
 		NumberFormat.rate(Formulas.clock_multiplier(state.clock_level + 1)), NumberFormat.amount(clock_cost)]
 	_clock_button.disabled = not Economy.can_overclock(state)
 
 
 func _refresh_overflow(state: GameState, content: Content) -> void:
 	if Economy.can_overflow(state):
-		_overflow_button.visible = true
 		_overflow_button.disabled = false
-		_overflow_button.text = "OVERFLOW   +%s Carry" % NumberFormat.amount(Economy.overflow_gain(state, content))
+		_overflow_button.text = "OVERFLOW   +%s CARRY" % NumberFormat.amount(Economy.overflow_gain(state, content))
 	elif state.overflows > 0 or state.register_bits >= 64:
-		_overflow_button.visible = true
 		_overflow_button.disabled = true
 		_overflow_button.text = "Overflow needs a full 64-bit register"
 	else:
-		_overflow_button.visible = false
+		_overflow_button.disabled = true
+		_overflow_button.text = "Overflow: fill a 64-bit register first"
 
 
 func _wide_bus_name(bits: int, content: Content) -> String:
@@ -505,6 +556,12 @@ func _wide_bus_name(bits: int, content: Content) -> String:
 		if node.effect == FirmwareDef.Effect.WIDE_BUS and int(node.value) == bits:
 			return node.display_name
 	return "Firmware"
+
+
+func _apply_settings() -> void:
+	_fx.reduced_motion = Settings.reduced_motion
+	_schematic.reduced_motion = Settings.reduced_motion
+	_refresh()
 
 
 func _show_tab(upgrades: bool) -> void:
@@ -523,6 +580,8 @@ func _open(panel: Control) -> void:
 		_stats_panel.refresh(Game.state, Game.content)
 	elif panel == _firmware_panel:
 		_firmware_panel.refresh(Game.state, Game.content)
+	elif panel == _settings_panel:
+		_settings_panel.refresh()
 	elif panel == _save_panel:
 		_save_panel.show_export(SaveManager.export_text())
 	elif panel == _ending_panel:
@@ -550,9 +609,11 @@ func _toast(variation: StringName, heading: String, heading_color: Color, title:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 0)
 	toast.add_child(box)
-	box.add_child(_label(heading, 11, heading_color))
-	box.add_child(_label(title, 16, Palette.ICE))
-	box.add_child(_label(body, 12, Palette.MUTED))
+	var head := _heading(heading)
+	head.add_theme_color_override("font_color", heading_color)
+	box.add_child(head)
+	box.add_child(_label(title, 17, Palette.ICE))
+	box.add_child(_label(body, 13, Palette.MUTED))
 	_toasts.add_child(toast)
 	var tween := toast.create_tween()
 	tween.tween_interval(TOAST_SECONDS)
@@ -567,13 +628,29 @@ func _on_achievement(id: StringName) -> void:
 
 
 func _on_overflowed(carry: float) -> void:
+	_register.flash(Color(1, 1, 1, 0.9))
+	_fx.flash(Color(1, 1, 1, 0.75), 0.9)
+	_fx.shockwave(_schematic.get_global_rect().get_center(), Palette.MAGENTA)
 	_toast(&"OverflowToast", "OVERFLOW", Palette.MAGENTA, "+%s Carry" % NumberFormat.amount(carry), "Spend it on Firmware. It stays through every Overflow.")
+
+
+func _on_widened(_bits: int) -> void:
+	_register.flash(Color(Palette.CYAN, 0.6))
+	_fx.flash(Color(Palette.CYAN, 0.12), 0.4)
 
 
 # --- Input --------------------------------------------------------------------
 
 func _on_increment() -> void:
+	var gain := Economy.click_value(Game.state, Game.content)
 	Game.click()
+	Audio.play("click")
+	var rect := _increment_button.get_global_rect()
+	_fx.float_text(Vector2(rect.get_center().x + randf_range(-30.0, 30.0), rect.position.y - 8.0), "+%s" % NumberFormat.amount(gain), Palette.CYAN)
+	if not Settings.reduced_motion:
+		_increment_button.pivot_offset = _increment_button.size / 2.0
+		_increment_button.scale = Vector2(0.95, 0.95)
+		_increment_button.create_tween().tween_property(_increment_button, "scale", Vector2.ONE, 0.12)
 	_refresh()
 
 
@@ -604,7 +681,8 @@ func _confirm_overflow() -> void:
 
 
 func _on_buy(index: int) -> void:
-	Game.buy(index, _mode)
+	if Game.buy(index, _mode) > 0:
+		_rows[index].flash()
 	_refresh()
 
 
@@ -639,12 +717,17 @@ func _open_view(view: String) -> void:
 			_open(_stats_panel)
 		"firmware":
 			_open(_firmware_panel)
+		"settings":
+			_open(_settings_panel)
 		"save":
 			_open(_save_panel)
 		"ending":
 			_open(_ending_panel)
 		"overflow":
 			_ask_overflow()
+		"overflow-fx":
+			# Replays the Overflow flash and shockwave, for screenshots.
+			_on_overflowed(32.0)
 		"debug":
 			if _debug_panel != null:
 				_debug_panel.visible = true
@@ -655,7 +738,7 @@ func _open_view(view: String) -> void:
 
 
 func _capture() -> void:
-	for _frame: int in 10:
+	for _frame: int in 12:
 		await get_tree().process_frame
 	await RenderingServer.frame_post_draw
 	var image := get_viewport().get_texture().get_image()

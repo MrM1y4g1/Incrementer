@@ -6,7 +6,8 @@ extends RefCounted
 
 static func build() -> Theme:
 	var theme := Theme.new()
-	theme.default_font_size = 16
+	theme.default_font = Fonts.body()
+	theme.default_font_size = 17
 
 	theme.set_stylebox("panel", "PanelContainer", _box(Palette.PANEL, Palette.LINE, 1, 4, 14.0))
 	theme.set_type_variation("RowPanel", "PanelContainer")
@@ -36,6 +37,14 @@ static func build() -> Theme:
 	theme.set_color("font_hover_color", "CheckButton", Palette.ICE)
 	theme.set_color("font_pressed_color", "CheckButton", Palette.ICE)
 	theme.set_color("font_hover_pressed_color", "CheckButton", Palette.ICE)
+
+	theme.set_stylebox("panel", "PopupMenu", _box(Palette.PANEL, Palette.LINE, 1, 4, 6.0))
+	theme.set_stylebox("hover", "PopupMenu", _box(Color(Palette.CYAN, 0.15), Color(0, 0, 0, 0), 0, 3, 4.0))
+	theme.set_color("font_color", "PopupMenu", Palette.ICE)
+	theme.set_color("font_hover_color", "PopupMenu", Palette.ICE)
+	theme.set_stylebox("slider", "HSlider", _box(Palette.LINE, Color(0, 0, 0, 0), 0, 2, 2.0))
+	theme.set_stylebox("grabber_area", "HSlider", _box(Palette.CYAN, Color(0, 0, 0, 0), 0, 2, 2.0))
+	theme.set_stylebox("grabber_area_highlight", "HSlider", _box(Palette.CYAN, Color(0, 0, 0, 0), 0, 2, 2.0))
 
 	theme.set_stylebox("scroll", "VScrollBar", _box(Color(Palette.LINE, 0.25), Color(0, 0, 0, 0), 0, 3, 3.0))
 	theme.set_stylebox("grabber", "VScrollBar", _box(Palette.LINE, Color(0, 0, 0, 0), 0, 3, 3.0))

@@ -44,3 +44,18 @@ func test_durations() -> void:
 	check_eq(NumberFormat.duration(125.0), "2m 05s")
 	check_eq(NumberFormat.duration(8040.0), "2h 14m")
 	check_eq(NumberFormat.duration(-5.0), "0s")
+
+
+func test_other_notations() -> void:
+	var saved := NumberFormat.notation
+	NumberFormat.notation = NumberFormat.Notation.SCIENTIFIC
+	check_eq(NumberFormat.amount(1234.0), "1.23e3")
+	check_eq(NumberFormat.amount(999.0), "999", "small amounts stay whole numbers in every notation")
+	NumberFormat.notation = NumberFormat.Notation.ENGINEERING
+	check_eq(NumberFormat.amount(12345.0), "12.3e3")
+	check_eq(NumberFormat.amount(1.8446744073709552e19), "18.4e18")
+	check_eq(NumberFormat.amount(999950.0), "1.00e6")
+	NumberFormat.notation = NumberFormat.Notation.BITS
+	check_eq(NumberFormat.amount(1048576.0), "20.0 bits")
+	check_eq(NumberFormat.amount(Formulas.MAX_FLOAT), "1024.0 bits")
+	NumberFormat.notation = saved

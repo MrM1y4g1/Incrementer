@@ -2,7 +2,21 @@ class_name NumberFormat
 extends RefCounted
 ## Turns big floats into short readable text: 1.23 K, 18.4 Qi, then 1.80e308 past the last suffix.
 
+enum Notation {
+	## 1.23 K, 18.4 Qi, then scientific past Dc.
+	STANDARD,
+	## 1.23e3
+	SCIENTIFIC,
+	## Exponents in steps of three: 12.3e15
+	ENGINEERING,
+	## How many bits the number needs: 151.3 bits
+	BITS,
+}
+
 const SUFFIXES: PackedStringArray = ["", "K", "M", "B", "T", "Qa", "Qi", "Sx", "Sp", "Oc", "No", "Dc"]
+
+## The player's choice, set by Settings. Tests that change it must set it back.
+static var notation: Notation = Notation.STANDARD
 
 
 ## Amounts the player owns. Below 1,000 they show as whole numbers, rounded down.
@@ -15,6 +29,13 @@ static func amount(value: float) -> String:
 		return "-" + amount(-value)
 	if value < 1000.0:
 		return str(int(floor(value)))
+	match notation:
+		Notation.SCIENTIFIC:
+			return _scientific(value)
+		Notation.ENGINEERING:
+			return _engineering(value)
+		Notation.BITS:
+			return "%.1f bits" % (log(value) / log(2.0))
 	return _big(value)
 
 
@@ -62,6 +83,15 @@ static func _scientific(value: float) -> String:
 	if text.begins_with("10."):
 		exponent += 1
 		text = "%.2f" % (value / pow(10.0, exponent))
+	return "%se%d" % [text, exponent]
+
+
+static func _engineering(value: float) -> String:
+	var exponent := floori(_exponent10(value) / 3.0) * 3
+	var text := _three_digits(value / pow(10.0, exponent))
+	if text == "1000":
+		exponent += 3
+		text = _three_digits(value / pow(10.0, exponent))
 	return "%se%d" % [text, exponent]
 
 
