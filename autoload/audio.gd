@@ -34,12 +34,9 @@ func _ready() -> void:
 
 	_music = AudioStreamPlayer.new()
 	_music.bus = &"Music"
-	var track: AudioStreamWAV = load("res://assets/audio/music.wav")
-	if track != null:
-		track.loop_mode = AudioStreamWAV.LOOP_FORWARD
-		track.loop_begin = 0
-		track.loop_end = track.data.size() / 2
-		_music.stream = track
+	# The loop is set in music.wav.import. Setting it here from the data size went wrong once the import
+	# compressed the data, and the loop cut off after a few seconds.
+	_music.stream = load("res://assets/audio/music.wav")
 	add_child(_music)
 
 	EventBus.layer_bought.connect(func(_index: int, _count: int) -> void: play("buy"))
