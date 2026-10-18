@@ -23,6 +23,11 @@ const CARRY_BASE_BITS := 48.0
 ## reaches, so this power law adds about 32 bits per doubling of Carry: enough for each run to reach
 ## roughly twice the bits of the run before.
 const CARRY_BONUS_POWER := 12.5
+## The Carry bonus ripples in: it is ×1 when a run starts and reaches full strength after this many seconds.
+## A flat bonus made a new run's first Incrementer worth millions per second, and because Count pays for
+## every layer, any flat bonus snowballs through the old widths in seconds. Time can't snowball, so each
+## run replays the old widths in about this long, then meets the new width at full strength.
+const CARRY_RIPPLE_SECONDS := 600.0
 ## Multipliers stay below this so they never become INF, because INF × 0 would be NaN.
 const MAX_MULTIPLIER := 1e300
 
@@ -78,6 +83,12 @@ static func carry_for_peak(peak: float) -> float:
 ## The Count-per-second bonus from all the Carry ever earned (spending Carry doesn't reduce it).
 static func carry_bonus(total_carry: float) -> float:
 	return minf(MAX_MULTIPLIER, pow(1.0 + maxf(0.0, total_carry), CARRY_BONUS_POWER))
+
+
+## The Carry bonus `run_seconds` into a run. Its exponent grows evenly, so the bonus gains the same number
+## of bits every second until it is complete.
+static func carry_bonus_at(total_carry: float, run_seconds: float) -> float:
+	return pow(carry_bonus(total_carry), clampf(run_seconds / CARRY_RIPPLE_SECONDS, 0.0, 1.0))
 
 
 ## The narrowest register that can hold `amount`, or -1 if none can.

@@ -29,6 +29,7 @@ static func advance(state: GameState, content: Content, seconds: float) -> void:
 
 
 ## Runs `seconds` of production in fixed steps, with autobuyers, up to the offline cap.
+## The run's time moves on with it, so the Carry bonus keeps rippling in while the player is away.
 ## Returns the Count gained.
 static func catch_up(state: GameState, content: Content, seconds: float, step: float = 1.0) -> float:
 	refresh_effects(state, content)
@@ -38,20 +39,35 @@ static func catch_up(state: GameState, content: Content, seconds: float, step: f
 		var dt := minf(step, remaining)
 		run_autobuyers(state, content)
 		advance(state, content, dt)
+		state.run_time += dt
 		remaining -= dt
 	return state.count - before
 
 
-## Time the player spends in the game. Offline catch-up doesn't count.
+## Time the player spends in the game. Offline catch-up adds to the run's time but not to play time.
 static func add_time(state: GameState, seconds: float) -> void:
-	state.play_time += seconds
+	add_play_time(state, seconds)
 	state.run_time += seconds
+
+
+## For time already caught up with `catch_up`, which moved the run's time on itself.
+static func add_play_time(state: GameState, seconds: float) -> void:
+	state.play_time += seconds
 
 
 ## Units of the layer below (or Count, for layer 1) that one owned unit makes per second.
 static func layer_rate(state: GameState, content: Content, index: int) -> float:
 	refresh_effects(state, content)
-	return content.layers[index].base_rate * Formulas.milestone_multiplier(state.layer_bought[index], state.milestone_step) * state.layer_multiplier[index]
+	var multiplier := state.layer_multiplier[index]
+	if index == 0:
+		# Applied here, not in refresh_effects, because it changes every tick while it ripples in.
+		multiplier = minf(Formulas.MAX_MULTIPLIER, multiplier * carry_bonus_now(state))
+	return content.layers[index].base_rate * Formulas.milestone_multiplier(state.layer_bought[index], state.milestone_step) * multiplier
+
+
+## The Carry bonus on Count per second at this point in the run.
+static func carry_bonus_now(state: GameState) -> float:
+	return Formulas.carry_bonus_at(state.total_carry, state.run_time)
 
 
 static func count_per_second(state: GameState, content: Content) -> float:
@@ -73,6 +89,7 @@ static func add_count(state: GameState, amount: float) -> float:
 
 
 ## Rebuilds every derived value from upgrades, Firmware, achievements and the clock, if anything changed.
+## The Carry bonus is left out: `layer_rate` applies it, because it ripples in over the run.
 ## Global boosts (the clock, achievements, Count multipliers) multiply layer 1 only, which is the Count
 ## per second. Applied to every layer they would compound down the chain, so "×2" would really mean
 ## about ×2 to the power of the number of active layers.
@@ -127,7 +144,7 @@ static func refresh_effects(state: GameState, content: Content) -> void:
 			FirmwareDef.Effect.MILESTONE_STEP:
 				milestone_step = mini(milestone_step, int(node.value))
 
-	multipliers[0] *= count_multiplier * Formulas.carry_bonus(state.total_carry)
+	multipliers[0] *= count_multiplier
 	for i: int in GameState.LAYER_COUNT:
 		multipliers[i] = minf(multipliers[i], Formulas.MAX_MULTIPLIER)
 	state.layer_multiplier = multipliers

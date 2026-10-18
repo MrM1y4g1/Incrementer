@@ -71,7 +71,7 @@ builds/            Exports, one folder per version (git-ignored)
 
 1. **`Economy` is the only code that changes the numbers.** Live play, offline catch-up, the autoplayer, the simulator and the tests all call the same functions. Never add Count or units anywhere else.
 2. **`core/` never touches autoloads, nodes or files** (except `ContentLoader`, which only reads `res://`). That keeps it testable headless.
-3. **Content is data.** New layers, upgrades or Firmware nodes are `.tres` files with a Resource class in `data/defs/`. Balance changes are data changes; afterwards run `tools/sim.gd -- --no-save --until=ending --check`. It fails if the first Overflow leaves 40–60 min, the longest first-hour wait passes 90 s, or the ending leaves 5–8 h. CI runs the same check.
+3. **Content is data.** New layers, upgrades or Firmware nodes are `.tres` files with a Resource class in `data/defs/`. Balance changes are data changes; afterwards run `tools/sim.gd -- --no-save --until=ending --check`. It fails if the first Overflow leaves 40–60 min, the longest first-hour wait passes 90 s, the second run gets back to 64 bits in under 3 min, or the ending leaves 5–8 h. CI runs the same check.
 4. **Saves are versioned.** Any change to `GameState.to_dict()` bumps `SaveCodec.VERSION` and adds a migration step plus a test that loads the old format.
 5. **The UI only asks and listens.** It calls `Game.click()`, `Game.buy()`, `Game.widen()`, reads `Game.state`, and listens to `EventBus`. It refreshes at 10 Hz, not every frame.
 6. **Floats stay finite.** Everything is capped by the register; the 1024-bit cap is `Formulas.MAX_FLOAT`. Test anything near 1e308.

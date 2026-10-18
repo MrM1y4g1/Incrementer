@@ -83,8 +83,36 @@ func test_carry_bonus_boosts_count_per_second_and_stays_finite() -> void:
 	var content := Fixtures.content()
 	var s := GameState.new()
 	s.total_carry = 1.0
+	s.run_time = Formulas.CARRY_RIPPLE_SECONDS
 	check_near(Economy.layer_rate(s, content, 0), pow(2.0, Formulas.CARRY_BONUS_POWER), 1e-12)
 	check_near(Economy.layer_rate(s, content, 1), 1.0, 1e-12)
+
+
+func test_the_carry_bonus_ripples_in_over_a_run() -> void:
+	var full := Formulas.carry_bonus(2.0)
+	check_eq(Formulas.carry_bonus_at(2.0, 0.0), 1.0)
+	check_near(Formulas.carry_bonus_at(2.0, Formulas.CARRY_RIPPLE_SECONDS / 2.0), sqrt(full), 1e-6)
+	check_near(Formulas.carry_bonus_at(2.0, Formulas.CARRY_RIPPLE_SECONDS), full, 1e-3)
+	check_near(Formulas.carry_bonus_at(2.0, 10.0 * Formulas.CARRY_RIPPLE_SECONDS), full, 1e-3)
+	check(is_finite(Formulas.carry_bonus_at(1e300, 1e9)), "a huge bonus stays finite")
+	# Right after an Overflow the first Incrementer makes what it did in the first run.
+	var content := Fixtures.content()
+	var s := GameState.new()
+	s.total_carry = 2.0
+	check_near(Economy.layer_rate(s, content, 0), 1.0, 1e-12)
+	Economy.add_time(s, Formulas.CARRY_RIPPLE_SECONDS)
+	check_near(Economy.layer_rate(s, content, 0), full, 1e-3)
+
+
+func test_the_ripple_goes_on_while_away() -> void:
+	var content := Fixtures.content()
+	var s := GameState.new()
+	s.total_carry = 2.0
+	s.play_time = 100.0
+	Economy.catch_up(s, content, 2.0 * Formulas.CARRY_RIPPLE_SECONDS)
+	check_eq(s.run_time, 2.0 * Formulas.CARRY_RIPPLE_SECONDS)
+	check_eq(s.play_time, 100.0, "time away isn't play time")
+	check_near(Economy.carry_bonus_now(s), Formulas.carry_bonus(2.0), 1e-3)
 
 
 func test_huge_multipliers_never_produce_nan() -> void:
@@ -92,6 +120,7 @@ func test_huge_multipliers_never_produce_nan() -> void:
 	var s := GameState.new()
 	s.register_bits = 1024
 	s.total_carry = 1e300
+	s.run_time = Formulas.CARRY_RIPPLE_SECONDS
 	s.layer_amount[7] = 1e300
 	for _step: int in 20:
 		Economy.advance(s, content, 1.0)
@@ -105,6 +134,7 @@ func test_rates_stay_finite_at_the_end() -> void:
 	var s := GameState.new()
 	s.register_bits = 1024
 	s.total_carry = 1e300
+	s.run_time = Formulas.CARRY_RIPPLE_SECONDS
 	s.layer_amount[0] = Formulas.MAX_FLOAT
 	check(is_finite(Economy.count_per_second(s, content)), "Count per second stays finite")
 	check(is_finite(Economy.click_value(s, content)), "a click stays finite")

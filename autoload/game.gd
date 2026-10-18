@@ -25,7 +25,7 @@ func _process(delta: float) -> void:
 	_accumulator += dt
 	if _accumulator > MAX_LIVE_GAP:
 		Economy.catch_up(state, content, _accumulator)
-		Economy.add_time(state, _accumulator)
+		Economy.add_play_time(state, _accumulator)
 		_accumulator = 0.0
 	while _accumulator >= TICK:
 		_accumulator -= TICK

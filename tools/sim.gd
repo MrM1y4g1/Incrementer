@@ -38,6 +38,10 @@ func _init() -> void:
 	var last_purchase := 0.0
 	var longest_wait := 0.0
 	var signature := _purchases(state)
+	# How long the second run takes to get back to a 64-bit register. Too quick means the Carry bonus
+	# skips the early game, which is what playtesting 1.0.0 found.
+	var overflow_at := 0.0
+	var replay := -1.0
 
 	print("time      milestone                                   target")
 	while seconds < minutes * 60.0:
@@ -57,8 +61,11 @@ func _init() -> void:
 			_first(reached, seconds, "64-bit full (first Overflow)", true)
 			if until == "overflow":
 				break
+		if overflows == 1 and replay < 0.0 and state.overflows == 1 and state.register_bits >= 64:
+			replay = seconds - overflow_at
 		if state.overflows > overflows:
 			overflows = state.overflows
+			overflow_at = seconds
 			# The AutoPlayer can fill the register and Overflow within the same simulated second.
 			_first(reached, seconds, "64-bit full (first Overflow)", true)
 			var run: Dictionary = state.runs[-1]
@@ -71,6 +78,8 @@ func _init() -> void:
 			break
 
 	print("\nlongest wait for a purchase in the first hour: %ds (target 90s or less)" % int(longest_wait))
+	if replay >= 0.0:
+		print("second run back at 64 bits after %s (target 3 minutes or more)" % NumberFormat.duration(replay))
 	print("final: %s Count at %d bits, %s per second, clock level %d" % [
 		NumberFormat.amount(state.count), state.register_bits, NumberFormat.rate(Economy.count_per_second(state, content)), state.clock_level])
 	print("upgrades %d of %d, achievements %d of %d, Firmware %d of %d, Carry %s (%s earned)" % [
@@ -82,6 +91,8 @@ func _init() -> void:
 	var first_overflow := float(reached.get("64-bit full (first Overflow)", -1.0))
 	if first_overflow < 40.0 * 60.0 or first_overflow > 60.0 * 60.0:
 		problems.append("first Overflow at %s, outside 40–60 minutes" % NumberFormat.duration(first_overflow))
+	if replay >= 0.0 and replay < 180.0:
+		problems.append("the second run is back at 64 bits after %s, under 3 minutes" % NumberFormat.duration(replay))
 	if longest_wait > 90.0:
 		problems.append("a %ds wait for a purchase in the first hour, over 90s" % int(longest_wait))
 	if until == "ending":
