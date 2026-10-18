@@ -1,0 +1,18 @@
+# Godot import cache and editor state
+.godot/
+/android/
+
+# Exported builds
+/builds/
+
+# Local tools: the Godot binary and its self-contained editor data
+/.tools/
+
+# Local-only tool config
+/.impeccable/*.local.json
+/.impeccable/hook.cache.json
+
+# OS and editor clutter
+.DS_Store
+Thumbs.db
+*.tmp

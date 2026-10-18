@@ -1,0 +1,17 @@
+# Normalise text files to LF, like Godot itself
+* text=auto eol=lf
+
+# Binary assets
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ogg binary
+*.wav binary
+*.mp3 binary
+*.ttf binary
+*.otf binary
+*.woff2 binary
+*.exe binary
+*.pck binary
+*.zip binary

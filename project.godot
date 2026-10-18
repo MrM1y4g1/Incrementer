@@ -1,0 +1,37 @@
+; Engine configuration file.
+; Edit with care outside the editor: keep keys in their sections.
+
+config_version=5
+
+[application]
+
+config/name="Incrementer"
+config/description="An incremental game about a counter inside a forgotten machine."
+config/version="0.1.0"
+run/main_scene="res://ui/main.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+config/icon="res://icon.svg"
+
+[autoload]
+
+EventBus="*res://autoload/event_bus.gd"
+ContentDB="*res://autoload/content_db.gd"
+Game="*res://autoload/game.gd"
+SaveManager="*res://autoload/save_manager.gd"
+
+[debug]
+
+gdscript/warnings/untyped_declaration=2
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+environment/defaults/default_clear_color=Color(0.0196, 0.0314, 0.0588, 1)
