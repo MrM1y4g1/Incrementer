@@ -2,6 +2,14 @@
 
 Newest first. Screenshots are captured from the real game at 1280 × 720. The `--autoplay` flag fast-forwards a scripted player, so the later shots show a run in progress.
 
+## 18 Oct 2026 · 1.2.2: sound in the browser
+
+**What you found:** no sound in the browser.
+
+**The cause:** the game made its Music and SFX audio buses in code as it started. On Windows that works. In the browser, Godot plays sounds through the browser's Web Audio, which only knows the buses that exist when the engine starts, so everything sent to Music and SFX went nowhere. Clicking also unlocks the browser's audio, so you won't hear anything until your first click or key press; that part is normal.
+
+**How I tested it without hearing it:** I served a copy of the Web build from my machine, so it couldn't touch your browser save. A small script in that copy put a level meter on the browser's audio output. Before the fix the output was flat silence while the music was supposedly playing. With the buses defined in `default_bus_layout.tres`, the music peaks around 0.09 and an Increment click at 0.55. AGENTS.md now says to define buses there and never in code.
+
 ## 18 Oct 2026 · 1.2.1: one layout at every size
 
 **What you found:** the game reshaped itself to the window. The screen already scaled with the window, but it was set to fill any extra width or height with more layout, so a wide window stretched the register and left the middle panel half empty.

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.2 · 18 October 2026
+
+- Sound works in the browser. The browser version was silent: the Music and Sound effects channels were created while the game started, which works on Windows, but browsers only play through channels that exist from the start. They're now set up before the game starts.
+
 ## 1.2.1 · 18 October 2026
 
 - The screen keeps the layout of the screenshots. It scales evenly to fit the window or browser and fills any spare space with the background colour, instead of stretching the panels to fill a wider or taller window.
