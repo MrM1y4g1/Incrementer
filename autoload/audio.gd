@@ -34,6 +34,11 @@ func _ready() -> void:
 
 	_music = AudioStreamPlayer.new()
 	_music.bus = &"Music"
+	# In the browser, sounds normally play as Web Audio samples, and a looping sample is copied whole every
+	# time it loops: about 100 MB for this track, every 2 minutes 11 seconds. Overnight that filled the tab's
+	# memory until the engine stopped (1.3.2). Streamed through Godot's own mixer, the music loops in place.
+	# Desktop builds always stream.
+	_music.playback_type = AudioServer.PLAYBACK_TYPE_STREAM
 	# The loop is set in music.wav.import. Setting it here from the data size went wrong once the import
 	# compressed the data, and the loop cut off after a few seconds.
 	_music.stream = load("res://assets/audio/music.wav")
