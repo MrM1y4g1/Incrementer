@@ -44,10 +44,9 @@ func _init(row_index: int) -> void:
 	_bought_label.add_theme_color_override("font_color", Palette.MUTED)
 	_bought_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	title.add_child(_bought_label)
-	# Clipped, so a long hint never pushes the buy button.
+	# Clipped, so a long hint never pushes the buy button, and in the narrower body font, to fit "upgrade at 100".
 	_upgrade_label = Label.new()
-	_upgrade_label.add_theme_font_override("font", Fonts.mono())
-	_upgrade_label.add_theme_font_size_override("font_size", 11)
+	_upgrade_label.add_theme_font_size_override("font_size", 12)
 	_upgrade_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_upgrade_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_upgrade_label.clip_text = true
@@ -100,7 +99,7 @@ func refresh(state: GameState, content: Content, mode: int) -> void:
 		_upgrade_label.text = "·  new upgrade"
 		_upgrade_label.add_theme_color_override("font_color", Palette.AMBER)
 	else:
-		_upgrade_label.text = "·  next upgrade at %d" % next.requires_bought
+		_upgrade_label.text = "·  upgrade at %d" % next.requires_bought
 		_upgrade_label.add_theme_color_override("font_color", Palette.MUTED)
 
 	var owned := state.layer_amount[index]

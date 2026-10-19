@@ -195,15 +195,17 @@ func _accent() -> Color:
 	return Palette.AMBER.lerp(Palette.HEAT, clampf((_charge - Formulas.CHARGE_FROM) / (1.0 - Formulas.CHARGE_FROM) * 1.3, 0.0, 1.0))
 
 
-## Reddens the background, the glow behind the panels and the panels' frames with the charge.
+## Reddens the background, the glow behind the panels and the panels' frames as the charge rises past
+## Formulas.CHARGE_FROM, where the bonus starts, so clicking at an easy pace leaves the screen alone.
 func _heat() -> void:
+	var level := clampf((_charge - Formulas.CHARGE_FROM) / (1.0 - Formulas.CHARGE_FROM), 0.0, 1.0)
 	if background != null:
-		background.color = Palette.VOID.lerp(Palette.HEAT, _charge * 0.26)
+		background.color = Palette.VOID.lerp(Palette.HEAT, level * 0.3)
 	if glow != null:
-		glow.modulate.a = pow(_charge, 1.3) * 0.85
+		glow.modulate.a = pow(level, 1.2) * 0.95
 		glow.visible = glow.modulate.a > 0.0
 	# In steps, so the frames don't redraw for changes nobody can see.
-	var heat := snappedf(_charge, 0.02)
+	var heat := snappedf(level, 0.02)
 	for frame: FramePanel in frames:
 		frame.heat = heat
 
