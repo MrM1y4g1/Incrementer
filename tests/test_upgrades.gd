@@ -71,3 +71,38 @@ func test_unknown_upgrade_ids_in_a_save_are_ignored() -> void:
 	var s := GameState.new()
 	s.upgrades.append(&"removed_in_a_later_version")
 	check_near(Economy.layer_rate(s, content, 0), 1.0, 1e-12)
+
+
+## Three Loop upgrades, listed out of order, and one that needs a 32-bit register.
+func _part_upgrades() -> Content:
+	var upgrades: Array[UpgradeDef] = []
+	for need: int in [25, 10, 50]:
+		var up := Fixtures.upgrade(StringName("loop_%d" % need), UpgradeDef.Effect.LAYER_MULTIPLIER, 2.0, 10.0, 2)
+		up.requires_tier = 2
+		up.requires_bought = need
+		upgrades.append(up)
+	var wide := Fixtures.upgrade(&"wide", UpgradeDef.Effect.ALL_MULTIPLIER, 2.0, 10.0)
+	wide.requires_bits = 32
+	upgrades.append(wide)
+	return _content_with(upgrades)
+
+
+func test_each_part_shows_its_next_upgrade() -> void:
+	var content := _part_upgrades()
+	var s := GameState.new()
+	check_eq(Economy.next_part_upgrade(s, content, 1).id, &"loop_10", "the one needing the fewest first")
+	check(Economy.next_part_upgrade(s, content, 0) == null, "a part without upgrades has none")
+	s.upgrades.append(&"loop_10")
+	check_eq(Economy.next_part_upgrade(s, content, 1).id, &"loop_25", "then the next")
+	s.upgrades.append_array([&"loop_25", &"loop_50"])
+	check(Economy.next_part_upgrade(s, content, 1) == null, "none once all are bought")
+
+
+func test_upgrade_progress_counts_what_the_register_allows() -> void:
+	var content := _part_upgrades()
+	var s := GameState.new()
+	check_eq(Economy.upgrade_progress(s, content), Vector2i(0, 3), "the wide one needs 32 bits")
+	check(Economy.upgrade_possible(s, content.upgrades[0]), "a part upgrade is possible before it unlocks")
+	s.upgrades.append(&"loop_10")
+	s.register_bits = 32
+	check_eq(Economy.upgrade_progress(s, content), Vector2i(1, 4))

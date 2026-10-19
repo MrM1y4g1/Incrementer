@@ -10,6 +10,9 @@ static func build() -> Theme:
 	theme.default_font_size = 17
 
 	theme.set_stylebox("panel", "PanelContainer", _box(Palette.PANEL, Palette.LINE, 1, 4, 14.0))
+	# The machine's panels: slightly see-through, so the click charge's red background shows in them.
+	theme.set_type_variation("MachinePanel", "PanelContainer")
+	theme.set_stylebox("panel", "MachinePanel", _box(Color(Palette.PANEL, 0.82), Palette.LINE, 1, 4, 14.0))
 	theme.set_type_variation("RowPanel", "PanelContainer")
 	theme.set_stylebox("panel", "RowPanel", _box(Palette.ROW, Palette.LINE, 1, 3, 6.0))
 	theme.set_type_variation("OverlayPanel", "PanelContainer")

@@ -1,7 +1,8 @@
 class_name LayerRow
 extends PanelContainer
-## One row of the parts list: the tier icon, the layer's name and units bought, how many it owns and
-## how fast that grows (the layer above writes new copies), what it makes, and its buy button.
+## One row of the parts list: the tier icon, the layer's name, units bought and when its next upgrade
+## unlocks, how many it owns and how fast that grows (the layer above writes new copies), what it makes,
+## and its buy button.
 
 signal buy_pressed(index: int)
 
@@ -10,6 +11,7 @@ var index := 0
 var _icon: TierIcon
 var _name_label: Label
 var _bought_label: Label
+var _upgrade_label: Label
 var _detail_label: Label
 var _button: Button
 
@@ -42,6 +44,15 @@ func _init(row_index: int) -> void:
 	_bought_label.add_theme_color_override("font_color", Palette.MUTED)
 	_bought_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	title.add_child(_bought_label)
+	# Clipped, so a long hint never pushes the buy button.
+	_upgrade_label = Label.new()
+	_upgrade_label.add_theme_font_override("font", Fonts.mono())
+	_upgrade_label.add_theme_font_size_override("font_size", 11)
+	_upgrade_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_upgrade_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_upgrade_label.clip_text = true
+	_upgrade_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	title.add_child(_upgrade_label)
 
 	_detail_label = Label.new()
 	_detail_label.add_theme_font_override("font", Fonts.mono())
@@ -72,6 +83,7 @@ func refresh(state: GameState, content: Content, mode: int) -> void:
 		_icon.set_style(Palette.LINE, false)
 		_name_label.add_theme_color_override("font_color", Palette.MUTED)
 		_bought_label.text = ""
+		_upgrade_label.text = ""
 		_detail_label.text = "Unlocks at %d-bit" % layer.unlock_bits
 		_button.text = "Locked"
 		_button.disabled = true
@@ -81,6 +93,15 @@ func refresh(state: GameState, content: Content, mode: int) -> void:
 	_icon.set_style(Palette.CYAN, bought > 0)
 	_name_label.remove_theme_color_override("font_color")
 	_bought_label.text = "%d bought" % bought
+	var next := Economy.next_part_upgrade(state, content, index)
+	if next == null or not Economy.upgrade_possible(state, next):
+		_upgrade_label.text = ""
+	elif Economy.upgrade_visible(state, next):
+		_upgrade_label.text = "·  upgrade unlocked"
+		_upgrade_label.add_theme_color_override("font_color", Palette.AMBER)
+	else:
+		_upgrade_label.text = "·  next upgrade at %d" % next.requires_bought
+		_upgrade_label.add_theme_color_override("font_color", Palette.MUTED)
 
 	var owned := state.layer_amount[index]
 	var growth := 0.0

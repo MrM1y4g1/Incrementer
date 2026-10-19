@@ -3,8 +3,8 @@ extends Control
 ## top, the schematic of the machine in the middle with the actions beneath it, parts and upgrades on
 ## the right, and a status bar along the bottom.
 ##
-## Press Increment or Space to increment. Clicking fast builds the click charge; holding Space down repeats
-## faster than a person can click, which the charge takes for a macro. F3 shows the debug panel in debug builds.
+## Press Increment or Space to increment. Clicking fast builds the click charge. Holding Space down counts as
+## one press, because a held key repeats faster than anyone can click. F3 shows the debug panel in debug builds.
 ## Dev flags, passed after `--` on the command line:
 ##   --no-save              do not read or write the save or settings (handled by SaveManager, Settings)
 ##   --mute                 no sound (also implied by --capture)
@@ -50,6 +50,8 @@ var _upgrades_tab: Button
 var _mode_box: HBoxContainer
 var _parts_scroll: ScrollContainer
 var _upgrades_scroll: ScrollContainer
+var _upgrades_list: VBoxContainer
+var _upgrades_summary: Label
 var _upgrades_empty: Label
 var _rows: Array[LayerRow] = []
 var _cards: Array[UpgradeCard] = []
@@ -61,6 +63,8 @@ var _skip_title := false
 var _background: ColorRect
 var _glow: TextureRect
 var _charge: ChargeDisplay
+## The machine's panels, whose frames the click charge heats.
+var _frames: Array[FramePanel] = []
 # ULTRA charges and Icarus falls so far, to notice new ones. -1 until the first refresh.
 var _ultras_seen := -1
 var _falls_seen := -1
@@ -153,13 +157,13 @@ func _cover_window(control: Control) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	var key := event as InputEventKey
-	if key == null or not key.pressed:
+	# A held key's repeats are ignored: holding Space would otherwise click 30 times a second and fill the
+	# click charge by itself.
+	if key == null or not key.pressed or key.echo:
 		return
 	if key.keycode == KEY_SPACE and not _backdrop.visible and not _title.visible and not _tutorial.visible:
 		_on_increment()
 		get_viewport().set_input_as_handled()
-		return
-	if key.echo:
 		return
 	if key.keycode == KEY_F3 and _debug_panel != null:
 		_debug_panel.visible = not _debug_panel.visible
@@ -178,6 +182,14 @@ func _build() -> void:
 	_background.color = Palette.VOID
 	_background.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_background)
+	# Behind the panels, which let a little of it through, so the red rises around the machine and not over it.
+	_glow = TextureRect.new()
+	_glow.texture = ChargeDisplay.make_glow()
+	_glow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_glow.stretch_mode = TextureRect.STRETCH_SCALE
+	_glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_glow.visible = false
+	add_child(_glow)
 
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -192,17 +204,10 @@ func _build() -> void:
 	root.add_child(_build_middle())
 	root.add_child(_build_status_bar())
 
-	# Over the panels, so the red reaches into them from the edges, and under everything that opens over them.
-	_glow = TextureRect.new()
-	_glow.texture = ChargeDisplay.make_glow()
-	_glow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_glow.stretch_mode = TextureRect.STRETCH_SCALE
-	_glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_glow.visible = false
-	add_child(_glow)
 	_charge = ChargeDisplay.new()
 	_charge.background = _background
 	_charge.glow = _glow
+	_charge.frames = _frames
 	add_child(_charge)
 	_place_screen()
 
@@ -224,7 +229,7 @@ func _build_top() -> Control:
 	var top := HBoxContainer.new()
 	top.add_theme_constant_override("separation", 14)
 
-	var register_panel := FramePanel.new()
+	var register_panel := _frame()
 	_register_panel = register_panel
 	register_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	register_panel.custom_minimum_size = Vector2(0, 156)
@@ -258,7 +263,7 @@ func _build_top() -> Control:
 	_scrub_button.text = "SCRUB"
 	status_row.add_child(_scrub_button)
 
-	var count_panel := FramePanel.new()
+	var count_panel := _frame()
 	count_panel.custom_minimum_size = Vector2(SIDE_WIDTH, 156)
 	top.add_child(count_panel)
 	var count_box := VBoxContainer.new()
@@ -288,7 +293,7 @@ func _build_middle() -> Control:
 	middle.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	middle.add_theme_constant_override("separation", 14)
 
-	var machine := FramePanel.new()
+	var machine := _frame()
 	machine.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	middle.add_child(machine)
 	var machine_box := VBoxContainer.new()
@@ -329,7 +334,7 @@ func _build_middle() -> Control:
 
 
 func _build_side_panel() -> Control:
-	var side := FramePanel.new()
+	var side := _frame()
 	side.custom_minimum_size = Vector2(SIDE_WIDTH, 0)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 6)
@@ -371,7 +376,13 @@ func _build_side_panel() -> Control:
 	_upgrades_scroll.visible = false
 	box.add_child(_upgrades_scroll)
 	var upgrades_list := _list()
+	_upgrades_list = upgrades_list
 	_upgrades_scroll.add_child(upgrades_list)
+	_upgrades_summary = _heading("")
+	upgrades_list.add_child(_upgrades_summary)
+	var upgrades_hint := _label("Every part unlocks upgrades of its own at %s bought, so keep buying the cheaper parts too. A wider register brings more." % _part_upgrade_steps(Game.content), 13, Palette.MUTED)
+	upgrades_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	upgrades_list.add_child(upgrades_hint)
 	_upgrades_empty = _label("No upgrades available yet. Buy more layers or widen the register.", 14, Palette.MUTED)
 	_upgrades_empty.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	upgrades_list.add_child(_upgrades_empty)
@@ -387,7 +398,7 @@ func _build_side_panel() -> Control:
 
 
 func _build_status_bar() -> Control:
-	var bar := FramePanel.new()
+	var bar := _frame()
 	bar.bracket_color = Color(Palette.LINE, 0.9)
 	var box := HBoxContainer.new()
 	box.add_theme_constant_override("separation", 8)
@@ -535,6 +546,14 @@ func _add_overlay(panel: Control, min_size: Vector2) -> void:
 	_overlays.append(panel)
 
 
+## One of the machine's panels. They let a little of the background through, so the click charge's red shows.
+func _frame() -> FramePanel:
+	var frame := FramePanel.new()
+	frame.theme_type_variation = &"MachinePanel"
+	_frames.append(frame)
+	return frame
+
+
 func _action_button(action: Callable) -> Button:
 	var button := Button.new()
 	button.custom_minimum_size = Vector2(0, 44)
@@ -645,7 +664,7 @@ func _refresh() -> void:
 		_bits_label.text = "Bad bit %d %s. It scrubs itself in %s." % [fault, held, NumberFormat.duration(Economy.scrub_time_left(state))]
 		_bits_label.add_theme_color_override("font_color", Palette.FAULT)
 	elif most_worn >= 0:
-		var left := NumberFormat.duration((1.0 - wear[most_worn]) * Formulas.WEAR_SECONDS)
+		var left := NumberFormat.duration(ceilf((1.0 - wear[most_worn]) * Formulas.WEAR_SECONDS))
 		if wear.size() == 1:
 			_bits_label.text = "Bit %d is wearing out: it goes bad in %s." % [most_worn, left]
 		else:
@@ -689,17 +708,32 @@ func _refresh() -> void:
 		if row.visible:
 			row.refresh(state, content, _mode)
 
-	# Upgrades: everything whose requirements are met, cheapest first.
-	var visible_count := 0
+	# Upgrades: everything whose requirements are met, cheapest first, then each part's next upgrade, locked,
+	# so it's clear that buying more of a part unlocks it.
+	var upcoming := {}
+	for i: int in content.layers.size():
+		var next := Economy.next_part_upgrade(state, content, i)
+		if next != null and Economy.is_unlocked(state, content.layers[i]) and Economy.upgrade_possible(state, next) and not Economy.upgrade_visible(state, next):
+			upcoming[next.id] = true
+	var available: Array[UpgradeCard] = []
+	var locked: Array[UpgradeCard] = []
 	var affordable := 0
 	for card: UpgradeCard in _cards:
-		card.visible = Economy.upgrade_visible(state, card.upgrade)
-		if card.visible:
-			visible_count += 1
-			card.refresh(state)
+		var ready := Economy.upgrade_visible(state, card.upgrade)
+		card.visible = ready or upcoming.has(card.upgrade.id)
+		if not card.visible:
+			continue
+		card.refresh(state)
+		if ready:
+			available.append(card)
 			if Economy.can_buy_upgrade(state, card.upgrade):
 				affordable += 1
-	_upgrades_empty.visible = visible_count == 0
+		else:
+			locked.append(card)
+	_order_cards([available, locked])
+	var progress := Economy.upgrade_progress(state, content)
+	_upgrades_summary.text = "%d OF %d POSSIBLE UPGRADES BOUGHT" % [progress.x, progress.y]
+	_upgrades_empty.visible = available.is_empty() and locked.is_empty()
 	_upgrades_tab.text = "Upgrades  %d" % affordable if affordable > 0 else "Upgrades"
 
 	if _stats_panel.visible:
@@ -746,6 +780,32 @@ func _refresh_overflow(state: GameState, content: Content) -> void:
 	else:
 		_overflow_button.disabled = true
 		_overflow_button.text = "Overflow: fill a 64-bit register first"
+
+
+## Puts the shown upgrade cards in this order, group by group, after the tab's heading lines. A card only
+## moves when it's out of place, which happens when one unlocks or is bought.
+func _order_cards(groups: Array) -> void:
+	var slot := _upgrades_empty.get_index() + 1
+	for group: Array in groups:
+		for card: UpgradeCard in group:
+			if card.get_index() != slot:
+				_upgrades_list.move_child(card, slot)
+			slot += 1
+
+
+## When parts unlock their upgrades, such as "10, 25, 50 and 100", from the content.
+func _part_upgrade_steps(content: Content) -> String:
+	var steps: Array[int] = []
+	for upgrade: UpgradeDef in content.upgrades:
+		if upgrade.requires_tier > 0 and not steps.has(upgrade.requires_bought):
+			steps.append(upgrade.requires_bought)
+	steps.sort()
+	var words := PackedStringArray()
+	for step: int in steps:
+		words.append(str(step))
+	if words.size() < 2:
+		return "".join(words)
+	return "%s and %s" % [", ".join(words.slice(0, -1)), words[-1]]
 
 
 func _wide_bus_name(bits: int, content: Content) -> String:
@@ -1017,7 +1077,7 @@ func _tutorial_text(step: String, state: GameState, content: Content) -> Array[S
 			var which := ""
 			if target != null:
 				which = "%s (%s) costs %s. " % [target.upgrade.display_name, UpgradeCard.describe(target.upgrade, content), NumberFormat.amount(target.upgrade.cost)]
-			return ["Buy an upgrade", "Upgrades are one-off boosts, bought with Count. %sBuy it here, under Upgrades.\n\nNew upgrades appear as you buy parts and widen the register. They last until you Overflow." % which]
+			return ["Buy an upgrade", "Upgrades are one-off boosts, bought with Count. %sBuy it here, under Upgrades.\n\nEvery part unlocks upgrades of its own at %s bought, so keep buying the cheaper parts too. Widening the register brings others. Upgrades last until you Overflow." % [which, _part_upgrade_steps(content)]]
 		"wear":
 			var bit := -1
 			for worn: int in state.wearing:

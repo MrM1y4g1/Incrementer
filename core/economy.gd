@@ -292,6 +292,36 @@ static func upgrade_visible(state: GameState, upgrade: UpgradeDef) -> bool:
 	return true
 
 
+## True when the register is wide enough for the upgrade this run, whether or not its part has been bought
+## enough to unlock it yet.
+static func upgrade_possible(state: GameState, upgrade: UpgradeDef) -> bool:
+	return state.register_bits >= upgrade.requires_bits
+
+
+## Upgrades bought this run, and upgrades the register allows this run, as (bought, possible).
+static func upgrade_progress(state: GameState, content: Content) -> Vector2i:
+	var progress := Vector2i.ZERO
+	for upgrade: UpgradeDef in content.upgrades:
+		if upgrade_possible(state, upgrade):
+			progress.y += 1
+			if state.upgrades.has(upgrade.id):
+				progress.x += 1
+	return progress
+
+
+## A part's next upgrade: of its upgrades not bought this run, the one that needs the fewest of the part
+## bought. Null once all are bought. A player who only buys their best part never sees these unlock (a
+## player's feedback on 1.4.0), so the screen shows each part's next one before it unlocks.
+static func next_part_upgrade(state: GameState, content: Content, index: int) -> UpgradeDef:
+	var next: UpgradeDef = null
+	for upgrade: UpgradeDef in content.upgrades:
+		if upgrade.requires_tier != index + 1 or state.upgrades.has(upgrade.id):
+			continue
+		if next == null or upgrade.requires_bought < next.requires_bought:
+			next = upgrade
+	return next
+
+
 static func can_buy_upgrade(state: GameState, upgrade: UpgradeDef) -> bool:
 	return upgrade_visible(state, upgrade) and state.count >= upgrade.cost
 
