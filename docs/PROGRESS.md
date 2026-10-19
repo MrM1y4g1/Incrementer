@@ -2,6 +2,18 @@
 
 Newest first. Screenshots are captured from the real game at 1280 × 720. The `--autoplay` flag fast-forwards a scripted player, so the later shots show a run in progress.
 
+## 19 Oct 2026 · 1.3.3: frozen overnight
+
+**What you found:** left running overnight on 1.3.2, the game had frozen, with the music still playing.
+
+**What your tab showed:** you dragged it into my tab group, and I read it without touching the game:
+- The engine had stopped: in two seconds it asked the browser for no frames and drew nothing. The music plays on because the browser keeps an already-started sound going by itself.
+- JavaScript's heap held 1.7 GB of the browser's 4.2 GB limit. The game's own memory had grown from 137 MB to 409 MB, and the graphics context was fine.
+
+**The cause:** in the browser, Godot plays sounds as Web Audio samples. When a looping sample ends, it makes a whole new copy of the sound and plays that; it doesn't loop in place. For a click that costs nothing, but the music is 2 minutes 11 seconds long: about 100 MB copied every loop, around 275 times overnight. I confirmed it in a test copy: at the loop point, a new 50 MB buffer was made and a new sound started, with nothing else going on.
+
+**The fix:** the music now plays in *stream* mode, through Godot's own mixer, which loops it in place. In the fixed test build the music measured the same at the output (peaks around 0.1). It created no buffers and started no Web Audio sounds, and the engine starts with 55 MB of memory instead of 137 MB, because the track is no longer decoded into a 50 MB sample up front. Click sounds stay as samples, because samples start faster. On Windows nothing changes, because desktop builds always mix sound themselves.
+
 ## 18 Oct 2026 · 1.3.2: the browser memory leak
 
 **What you found:** after an hour in the browser, Chrome's process for the game held 3.4 GB, and then the game stopped responding.

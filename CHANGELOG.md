@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.3 · 19 October 2026
+
+- Fixed the browser version freezing after being left running for hours. Each time the music looped, the browser made a complete new copy of the track, about 100 MB every 2 minutes 11 seconds, until the tab ran out of memory. The music now plays through the game's own mixer, which loops it without copying, and the game starts with less memory too.
+
 ## 1.3.2 · 18 October 2026
 
 - Fixed a memory leak in the browser. The machine schematic redrew all its shapes 60 times a second, and the browser kept memory for each one, so the tab grew by about 2 MB a second until it froze. The shapes now redraw only when they change, and the browser's memory stays level.

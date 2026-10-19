@@ -8,7 +8,7 @@ Built with **Godot 4.7.2** (GDScript, Compatibility renderer) for the Web and Wi
 
 ## Status
 
-**Version 1.3.2.** The whole V1 game is done, from the first click to the ending at a full 1024-bit register (about six hours): a start screen, eight Software layers, register widths from 8 to 1024 bits, bad bits to repair or scrub, 40 upgrades, 36 achievements, Overclock, the Overflow, Carry, 26 Firmware nodes with autobuyers, settings, save export and import, Start over, and a run log. The machine only runs while the game is open. See [CHANGELOG.md](CHANGELOG.md) and the [progress log](docs/PROGRESS.md).
+**Version 1.3.3.** The whole V1 game is done, from the first click to the ending at a full 1024-bit register (about six hours): a start screen, eight Software layers, register widths from 8 to 1024 bits, bad bits to repair or scrub, 40 upgrades, 36 achievements, Overclock, the Overflow, Carry, 26 Firmware nodes with autobuyers, settings, save export and import, Start over, and a run log. The machine only runs while the game is open. See [CHANGELOG.md](CHANGELOG.md) and the [progress log](docs/PROGRESS.md).
 
 ## Playing it
 
@@ -16,8 +16,8 @@ Built with **Godot 4.7.2** (GDScript, Compatibility renderer) for the Web and Wi
 
 Or download a build from the [releases page](https://github.com/MrM1y4g1/Incrementer/releases):
 
-- **Windows:** unzip `Incrementer-1.3.2-windows.zip` and run `Incrementer.exe`. Windows may show a SmartScreen warning because the game isn't code-signed: choose **More info → Run anyway**. Saves live in `%APPDATA%\Godot\app_userdata\Incrementer`.
-- **Web:** `Incrementer-1.3.2-web.zip` is ready for itch.io. To play it locally, serve the unzipped folder with any static web server and open `index.html`; it needs a browser with WebGL 2. Browser saves can be lost with site data, so use **Save data → Copy** to keep a backup.
+- **Windows:** unzip `Incrementer-1.3.3-windows.zip` and run `Incrementer.exe`. Windows may show a SmartScreen warning because the game isn't code-signed: choose **More info → Run anyway**. Saves live in `%APPDATA%\Godot\app_userdata\Incrementer`.
+- **Web:** `Incrementer-1.3.3-web.zip` is ready for itch.io. To play it locally, serve the unzipped folder with any static web server and open `index.html`; it needs a browser with WebGL 2. Browser saves can be lost with site data, so use **Save data → Copy** to keep a backup.
 
 Click the register or press **Space** to increment. The `windows-debug` build adds a debug panel on **F3**.
 
