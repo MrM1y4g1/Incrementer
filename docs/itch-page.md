@@ -32,14 +32,15 @@ Fill a 1024-bit register, 1.80 × 10^308 (the largest number a 64-bit float can 
 **What's in it**
 - Eight layers of software that produce each other, drawn as a living schematic
 - A register from 8 to 1024 bits, shown bit by bit
-- Worn bits: the machine's storage wears out as you play. Refresh a bit before it goes bad, or repair it, scrub it with a parity puzzle, or wait
+- A click charge: click fast and every click is worth more. Just don't fly too close to the sun
+- Worn bits: the machine's storage wears out as you play. When a bit goes bad, repair it, scrub it with a parity puzzle, or wait
 - A short tutorial that pauses the game to explain the first steps
-- 40 upgrades, 36 achievements and Overclock
+- 40 upgrades, 37 achievements and Overclock
 - The Overflow, Carry and 26 Firmware nodes, including autobuyers
 - About six hours to the ending. The machine runs while the game is open
 - Synthesised sound and music, reduced-motion and number-format settings
 
-**Controls:** mouse. Click the register or press **Space** to increment.
+**Controls:** mouse. Press **Increment** or **Space** to increment.
 
 **Saves:** the game saves automatically. Save data can copy your save as text, start over, or copy a run log of what you bought and when; nothing is ever sent anywhere.
 - In the browser, saves live in your browser's storage. Private windows, or clearing site data, can lose them, so use **Save data → Copy** now and then to keep a backup.
@@ -59,8 +60,9 @@ Upload these from `docs/screenshots/`, in this order:
 5. `2026-10-18-m6-03-ending.png`: the ending
 6. `2026-10-19-v140-04-worn-bits.png`: bits wearing out
 7. `2026-10-19-v140-07-scrub-256-bit.png`: scrubbing a bad bit
-8. `2026-10-19-v140-01-tutorial-count.png`: the tutorial
-9. `2026-10-18-v110-01-start-screen.png`: the start screen
+8. `2026-10-19-v150-01-click-charge.png`: the click charge
+9. `2026-10-19-v140-01-tutorial-count.png`: the tutorial
+10. `2026-10-18-v110-01-start-screen.png`: the start screen
 
 ## Launch checklist
 

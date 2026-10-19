@@ -8,7 +8,7 @@ Built with **Godot 4.7.2** (GDScript, Compatibility renderer) for the Web and Wi
 
 ## Status
 
-**Version 1.4.0.** The whole V1 game is done, from the first click to the ending at a full 1024-bit register (about six hours): a start screen and tutorial, eight Software layers, register widths from 8 to 1024 bits, worn bits to refresh and bad bits to repair or scrub, 40 upgrades, 36 achievements, Overclock, the Overflow, Carry, 26 Firmware nodes with autobuyers, settings, save export and import, Start over, and a run log. The machine only runs while the game is open. See [CHANGELOG.md](CHANGELOG.md) and the [progress log](docs/PROGRESS.md).
+**Version 1.5.0.** The whole V1 game is done, from the first click to the ending at a full 1024-bit register (about six hours): a start screen and tutorial, eight Software layers, register widths from 8 to 1024 bits, a click charge for fast clicking, bits that wear out and go bad, 40 upgrades, 37 achievements, Overclock, the Overflow, Carry, 26 Firmware nodes with autobuyers, settings, save export and import, Start over, and a run log. The machine only runs while the game is open. See [CHANGELOG.md](CHANGELOG.md) and the [progress log](docs/PROGRESS.md).
 
 ## Playing it
 
@@ -16,14 +16,16 @@ Built with **Godot 4.7.2** (GDScript, Compatibility renderer) for the Web and Wi
 
 Or download a build from the [releases page](https://github.com/MrM1y4g1/Incrementer/releases):
 
-- **Windows:** unzip `Incrementer-1.4.0-windows.zip` and run `Incrementer.exe`. Windows may show a SmartScreen warning because the game isn't code-signed: choose **More info → Run anyway**. Saves live in `%APPDATA%\Godot\app_userdata\Incrementer`.
-- **Web:** `Incrementer-1.4.0-web.zip` is ready for itch.io. To play it locally, serve the unzipped folder with any static web server and open `index.html`; it needs a browser with WebGL 2. Browser saves can be lost with site data, so use **Save data → Copy** to keep a backup.
+- **Windows:** unzip `Incrementer-1.5.0-windows.zip` and run `Incrementer.exe`. Windows may show a SmartScreen warning because the game isn't code-signed: choose **More info → Run anyway**. Saves live in `%APPDATA%\Godot\app_userdata\Incrementer`.
+- **Web:** `Incrementer-1.5.0-web.zip` is ready for itch.io. To play it locally, serve the unzipped folder with any static web server and open `index.html`; it needs a browser with WebGL 2. Browser saves can be lost with site data, so use **Save data → Copy** to keep a backup.
 
-Click the register or press **Space** to increment. The `windows-debug` build adds a debug panel on **F3**.
+Press **Increment** or **Space** to increment. The `windows-debug` build adds a debug panel on **F3**.
 
 **Start over** (Save data, or New game on the start screen) erases the game but first writes it to `save-before-start-over.json` in the save folder; rename that to `save.json`, with the game closed, to get it back.
 
-**Worn and bad bits:** the register's storage wears out as you play. A worn bit glows amber, then red, and goes bad after 20 seconds unless you click it or press **Refresh**. If it held a 1, the Count loses that bit's value. A bad bit stops the Count until you **Repair** it (half the bit's value in Count), **Scrub** it (solve a parity puzzle that grows with the register, free) or wait a minute. They can be switched off in Settings.
+**Click charge:** click fast and each click is worth more: above 5 clicks a second the charge builds, and with it a bonus on every click. Don't fly too close to the sun: only a macro can fill it, and then clicks do nothing for 15 seconds.
+
+**Worn and bad bits:** the register's storage wears out as you play. A worn bit glows amber, then red, and goes bad 5 seconds later; nothing stops it. If it held a 1, the Count loses that bit's value. A bad bit stops the Count until you **Repair** it (half the bit's value in Count), **Scrub** it (solve a parity puzzle that grows with the register, free) or wait a minute. They can be switched off in Settings.
 
 **Tutorial:** the first time something new happens, the game pauses and explains it. **Skip tutorial** turns it off for that save.
 

@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.5.0 · 19 October 2026
+
+**New: the click charge.** Click fast and every click is worth more:
+- The charge follows how fast you've clicked over the last few seconds. Above 5 clicks a second each click earns a bonus: about +67% at 10 a second and +120% at 14.
+- A card over the machine eggs you on ("You can do better", "Come on, you can do it", "You're almost there") above a battery that fills from amber to red. The screen heats up with it: the background, a glow behind the panels and the panels' frames turn red. The click rises in pitch and its numbers turn from cyan to red.
+- Holding Space down counts as one press.
+
+**New: Icarus.** Only a macro can fill the battery: it takes more than 20 clicks a second for several seconds. Fill it and you fly too close to the sun. For 15 seconds clicks do nothing, the Increment button reads **Wings melted**, and the card shows Icarus falling across the sun. The first time unlocks the **Icarus** achievement.
+
+**Worn bits can't be saved any more.** A worn bit glows amber, turns red and goes bad 5 seconds later, and nothing stops it. The Refresh button is gone, and clicking the register no longer refreshes a bit or increments; use Increment or Space.
+
+**Upgrades say how they unlock.** A player didn't know that buying more of a cheaper part unlocks upgrades:
+- Each part says when its next upgrade unlocks ("upgrade at 25"), or "new upgrade" in amber once it has.
+- The Upgrades tab counts the upgrades bought out of those possible at this register width, explains that every part unlocks upgrades at 10, 25, 50 and 100 bought, and lists each part's next upgrade, locked, with how many of the part it needs.
+- The tutorial's upgrade step says the same.
+
+- Stats show your fastest clicking and how often you were caught macro clicking, instead of the worn bits you refreshed. The run log records each Icarus fall.
+- Saves use format 7. Saves from 1.4.0 load; 1.4.0 can't read a 1.5.0 save, but won't overwrite it.
+- Pacing is unchanged for the simulator's player (first Overflow at 49 min, ending at 6 h 14 min), who clicks 4 times a second and never earns the bonus. An autoclicker kept just under the limit, at 18 clicks a second, finishes at 5 h 20 min, inside the 5-hour floor. With every worn bit now going bad, a player who only waits bad bits out is slower: in the simulator their fourth run piled up bad bits in a 128-bit register for over an hour, and they finish after 8 hours. As before, that player isn't checked.
+
 ## 1.4.0 · 19 October 2026
 
 **New: a tutorial.** The first time each of these happens, the game pauses and a card explains it, next to the part of the screen it's about:

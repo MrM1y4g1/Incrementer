@@ -2,6 +2,38 @@
 
 Newest first. Screenshots are captured from the real game at 1280 × 720. The `--autoplay` flag fast-forwards a scripted player, so the later shots show a run in progress.
 
+## 19 Oct 2026 · 1.5.0: the click charge, Icarus, and how upgrades unlock
+
+**What you asked for:**
+- clicking faster builds up an extra % per click, with messages egging the player on ("you can do better", "come on, you can do it", "you're almost there"), prominent but not over the Increment button, and the background slowly turning red like a battery charging
+- an Icarus achievement for clicking insanely fast: flying too close to the sun, caught macro clicking
+- no more clicking the register to count, and no refreshing worn bits, though they still change colour as they wear
+- worn bits that go bad after 5 seconds
+- after trying the test build: holding Space shouldn't fill the bar, the first look wasn't nice, and a full bar should be no reward but an Icarus stage, with a one-colour emblem of Icarus against the sun, to punish macro clickers
+- a player's feedback: they didn't know that buying more of a cheaper part unlocks upgrades
+
+**The click charge.** The charge follows how fast you've clicked over the last few seconds, as a share of 20 clicks a second. Above 5 a second it adds a bonus to every click: +67% at 10 a second, +120% at 14. A card appears over the machine, never over the Increment button: the bonus, a message egging you on, and a battery that fills from amber to red. The first quarter of the battery is dimmer, because it earns no bonus yet. As the charge passes 5 a second the screen heats up: the background, a glow behind the panels and the panels' frames turn red, while the numbers inside stay clear. The click sound rises in pitch and its numbers turn from cyan to red. Holding Space counts as one press, because a held key repeats about 30 times a second.
+
+![The click charge](screenshots/2026-10-19-v150-01-click-charge.png)
+
+**Icarus.** Only a macro fills the battery: it takes more than 20 clicks a second for several seconds (about 4 at 30 a second; never at 20 or less). Then you've flown too close to the sun. A white flash and a falling whistle, and for 15 seconds clicks do nothing: the Increment button reads **Wings melted** with a countdown, Space is ignored, and the card shows the emblem, a figure with raised wings cut out of a rayed sun, shedding feathers. The emblem is drawn in code, once, so it costs the browser nothing while it's up. The first fall unlocks the **Icarus** achievement. An earlier test build rewarded a full battery with ULTRA; you made it the punishment instead.
+
+![The Icarus stage](screenshots/2026-10-19-v150-02-icarus.png)
+
+**Worn bits.** A worn bit still glows amber, then red, but goes bad after 5 seconds and nothing stops it: no Refresh button, no clicking the bit. Clicking the register does nothing now; Increment and Space count. The tutorial says there's no stopping it.
+
+![The worn bit step](screenshots/2026-10-19-v150-03-tutorial-wear.png)
+
+**How upgrades unlock.** Every part has four upgrades, unlocked at 10, 25, 50 and 100 bought, but nothing said so. Now each part row says when its next upgrade unlocks ("upgrade at 50"), or "new upgrade" in amber once it has. The Upgrades tab opens with a count, such as 15 of 36 possible upgrades bought (possible at this register width), a line explaining the steps, and each part's next upgrade as a locked card: "Unlocks at 10 Processes bought (9 now)". The tutorial's upgrade step explains it too.
+
+![Part rows](screenshots/2026-10-19-v150-06-parts.png)
+
+![The Upgrades tab](screenshots/2026-10-19-v150-04-upgrades.png)
+
+![The upgrade step](screenshots/2026-10-19-v150-05-tutorial-upgrade.png)
+
+**Pacing:** unchanged for the simulator's player, who clicks 4 times a second and never earns the bonus: first Overflow at 49 min, ending at 6 h 14 min. The pacing check now also plays an autoclicker kept just under the Icarus limit, at 18 a second, which must take 5 hours or more: it finishes at 5 h 20 min. Every worn bit now goes bad, which the scripted player handles by repairing. A player who only waits bad bits out is slower than in 1.4.0: their fourth run piled up bad bits in a 128-bit register for over an hour, and they finish after 8 hours. That's the pile-up you said is fine, so it isn't checked.
+
 ## 19 Oct 2026 · 1.4.0: a tutorial, and bits that wear out
 
 **What you asked for:**
