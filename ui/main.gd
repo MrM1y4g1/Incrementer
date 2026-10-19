@@ -13,7 +13,7 @@ extends Control
 ##                          title, upgrades, stats, firmware, settings, save, start-over, overflow, ending, debug, toast,
 ##                          fault (puts a bad bit just above the Count and fills up to it), scrub,
 ##                          wear (starts three bits wearing, at different stages),
-##                          charge, ultra, icarus (the click charge part-way, full, or melted by macro clicking),
+##                          charge, icarus (the click charge part-way, or the Icarus stage after macro clicking),
 ##                          tutorial-<step> (shows that tutorial step: count, incrementer, upgrade, wear or bad-bit)
 ##                          (--autoplay and --capture skip the start screen and the tutorial unless --open asks for them)
 ##   --capture=<png path>   save a screenshot after a few frames, then quit
@@ -65,8 +65,7 @@ var _glow: TextureRect
 var _charge: ChargeDisplay
 ## The machine's panels, whose frames the click charge heats.
 var _frames: Array[FramePanel] = []
-# ULTRA charges and Icarus falls so far, to notice new ones. -1 until the first refresh.
-var _ultras_seen := -1
+# Icarus falls so far, to notice a new one. -1 until the first refresh.
 var _falls_seen := -1
 # Bad bits cleared so far, bad bits now, bits worn this run and whether a bad bit was holding the Count,
 # to notice changes between refreshes. -1 until the first refresh.
@@ -685,7 +684,12 @@ func _refresh() -> void:
 		_repair_button.disabled = not Economy.can_repair(state)
 	_notice_faults(state, blocked)
 
-	_increment_button.text = "INCREMENT\n+%s" % NumberFormat.amount(Economy.click_value(state, content))
+	# During the Icarus stage, clicks do nothing.
+	_increment_button.disabled = state.burnout > 0.0
+	if state.burnout > 0.0:
+		_increment_button.text = "WINGS MELTED\n%ds" % ceili(state.burnout)
+	else:
+		_increment_button.text = "INCREMENT\n+%s" % NumberFormat.amount(Economy.click_value(state, content))
 	_charge.position = _local_rect(_schematic).position
 	_charge.size = _schematic.size
 	_charge.show_charge(state)
@@ -877,16 +881,11 @@ func _notice_faults(state: GameState, blocked: bool) -> void:
 	_was_blocked = blocked
 
 
-## A sound and a flash when the click charge fills, and a white flash, like the sun, when the player is
-## caught macro clicking.
+## A white flash, like the sun, and a falling whistle when the player is caught macro clicking.
 func _notice_charge(state: GameState) -> void:
-	if _ultras_seen >= 0 and state.ultras > _ultras_seen:
-		Audio.play("ultra", 0.0)
-		_fx.flash(Color(Palette.HEAT, 0.3), 0.5)
 	if _falls_seen >= 0 and state.icarus_falls > _falls_seen:
 		Audio.play("icarus", 0.0)
 		_fx.flash(Color(Palette.ICE, 0.7), 1.2)
-	_ultras_seen = state.ultras
 	_falls_seen = state.icarus_falls
 
 
@@ -1067,7 +1066,7 @@ func _tutorial_target(step: String) -> Control:
 func _tutorial_text(step: String, state: GameState, content: Content) -> Array[String]:
 	match step:
 		"count":
-			return ["Count up", "You are a counter inside a machine. Press INCREMENT, or Space, to add 1 to the Count. Click fast to charge it up: the faster you click, the more each click is worth.\n\nThe register at the top holds the Count in binary: each lit cell is a 1. An %d-bit register holds up to %s. Widen it to count higher." % [
+			return ["Count up", "You are a counter inside a machine. Press INCREMENT, or Space, to add 1 to the Count. Click fast to charge it up: the faster you click, the more each click is worth. Just don't fly too close to the sun.\n\nThe register at the top holds the Count in binary: each lit cell is a 1. An %d-bit register holds up to %s. Widen it to count higher." % [
 				state.register_bits, NumberFormat.amount(Formulas.register_cap(state.register_bits))]]
 		"incrementer":
 			return ["Buy an Incrementer", "You can afford an Incrementer. Each one adds %s to the Count every second by itself, so the Count keeps rising while you do other things.\n\nParts cost more each time you buy one, and every %d of the same part doubles its output." % [
@@ -1114,11 +1113,14 @@ func _local_rect(control: Control) -> Rect2:
 # --- Input --------------------------------------------------------------------
 
 func _on_increment() -> void:
+	# Space still reaches here during the Icarus stage, when the button is disabled.
+	if Game.state.burnout > 0.0:
+		return
 	var charge := Game.state.charge
 	var gain := Game.click()
 	# The click rises in pitch as the charge builds, and its number heats up from cyan to red.
 	Audio.play("click", 0.05, 1.0 + 0.6 * charge)
-	var color := Palette.CYAN if charge < ChargeDisplay.SHOW_FROM else Palette.AMBER.lerp(Palette.HEAT, charge)
+	var color := Palette.CYAN if charge < Formulas.CHARGE_FROM else Palette.AMBER.lerp(Palette.HEAT, charge)
 	var rect := _increment_button.get_global_rect()
 	_fx.float_text(Vector2(rect.get_center().x + randf_range(-30.0, 30.0), rect.position.y - 8.0), "+%s" % NumberFormat.amount(gain), color)
 	if not Settings.reduced_motion:
@@ -1209,12 +1211,11 @@ func _open_view(view: String) -> void:
 			_refresh()
 		"scrub":
 			_open_scrub()
-		"charge", "ultra", "icarus":
-			# For screenshots: the click charge part-way, full, or melted after macro clicking.
+		"charge", "icarus":
+			# For screenshots: the click charge part-way, or the Icarus stage after macro clicking.
 			var state := Game.state
-			state.click_rate = 10.0
-			state.charge = {"charge": 0.55, "ultra": 1.0, "icarus": 0.0}[view]
-			state.ultra = view == "ultra"
+			state.click_rate = 14.0
+			state.charge = 0.6 if view == "charge" else 0.0
 			state.burnout = Formulas.ICARUS_SECONDS if view == "icarus" else 0.0
 			_refresh()
 		"wear":

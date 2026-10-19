@@ -28,9 +28,9 @@ const TARGETS := {
 ##   ratio:<r>   whenever the Overflow would pay at least r times the Carry earned
 ##   stall:<b>   once the peak grows less than b bits in a minute, if the Overflow would double the Carry
 const FASTER_PLAYERS: Array[String] = ["ripple:0.5", "ripple:0.75", "ratio:16", "stall:1", "stall:3"]
-## A player, or an autoclicker, that clicks this fast all game keeps the click charge full without being
-## caught (Formulas.ICARUS_RATE). It plays like the AutoPlayer otherwise, and must also take 5 hours or more.
-const FAST_CLICKS := 15.0
+## A player, or an autoclicker, that clicks this fast all game keeps the click charge nearly full without
+## being caught (Formulas.ICARUS_RATE). It plays like the AutoPlayer otherwise, and must also take 5 hours or more.
+const FAST_CLICKS := 18.0
 ## The fastest any player may reach the ending, and how long the faster players are followed.
 const ENDING_FLOOR := 5.0 * 3600.0
 const ENDING_CEILING := 8.0 * 3600.0
@@ -128,7 +128,7 @@ func _init() -> void:
 		var idle := _ending_with(content, "none:0", AutoPlayer.Fix.WAIT)
 		print("\na player who waits out every bad bit: %s (not checked)" % _duration(idle))
 		var clicker := _ending_with(content, "none:0", AutoPlayer.Fix.REPAIR, FAST_CLICKS)
-		print("a player who clicks %d times a second, with the click charge full: %s (target 5 hours or more)" % [FAST_CLICKS, _duration(clicker)])
+		print("a player who clicks %d times a second, with the click charge nearly full: %s (target 5 hours or more)" % [FAST_CLICKS, _duration(clicker)])
 		if clicker > 0.0 and clicker < ENDING_FLOOR:
 			problems.append("a player clicking %d times a second reaches the ending at %s, under 5 hours" % [FAST_CLICKS, NumberFormat.duration(clicker)])
 		print("faster players (target 5 hours or more to the ending):")

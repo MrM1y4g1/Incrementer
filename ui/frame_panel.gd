@@ -1,7 +1,7 @@
 class_name FramePanel
 extends PanelContainer
 ## A panel with thin corner brackets: the frame style from the art direction. The click charge heats it: its
-## border and brackets turn red. Drawn with rects only, because during ULTRA it redraws every frame, and in
+## border and brackets turn red. Drawn with rects only, because it redraws as often as the charge changes, and in
 ## the browser every line drawn makes a new WebGL buffer (see SchematicView).
 
 const BRACKET := 12.0

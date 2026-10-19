@@ -10,7 +10,7 @@ extends RefCounted
 ##   4  1.1.0: adds the run log (events)
 ##   5  1.2.0: adds bad bits (run seed, bad bits, blocked time, the switch and the counts)
 ##   6  1.4.0: adds worn bits (wearing, wear due, wear started, refreshed count, Count lost) and the tutorial
-##   7  1.5.0: adds the click charge's records (fastest click rate, ULTRA charges, Icarus falls) and drops the
+##   7  1.5.0: adds the click charge's records (fastest click rate, Icarus falls) and drops the
 ##      refreshed count, because worn bits can't be refreshed any more
 
 const VERSION := 7
@@ -154,7 +154,6 @@ static func _v6_to_v7(payload: Dictionary) -> Dictionary:
 	var state: Dictionary = state_data
 	state.erase("faults_refreshed")
 	state["best_click_rate"] = 0.0
-	state["ultras"] = 0
 	state["icarus_falls"] = 0
 	payload["state"] = state
 	return payload

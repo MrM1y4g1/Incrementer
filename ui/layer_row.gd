@@ -97,7 +97,7 @@ func refresh(state: GameState, content: Content, mode: int) -> void:
 	if next == null or not Economy.upgrade_possible(state, next):
 		_upgrade_label.text = ""
 	elif Economy.upgrade_visible(state, next):
-		_upgrade_label.text = "·  upgrade unlocked"
+		_upgrade_label.text = "·  new upgrade"
 		_upgrade_label.add_theme_color_override("font_color", Palette.AMBER)
 	else:
 		_upgrade_label.text = "·  next upgrade at %d" % next.requires_bought

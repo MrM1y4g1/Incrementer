@@ -60,26 +60,21 @@ var faults_scrubbed := 0
 var faults_waited := 0
 ## Count lost over the whole save to bits that went bad while they held a 1.
 var count_lost := 0.0
-## The click charge's records: the fastest click rate, how many times the charge filled (ULTRA), and how
-## many times the player was caught clicking faster than a person can (Icarus).
+## The click charge's records: the fastest click rate, and how many times the player was caught clicking
+## faster than a person can (Icarus).
 var best_click_rate := 0.0
-var ultras := 0
 var icarus_falls := 0
 ## Tutorial steps already shown (see Tutorial).
 var tutorial: Array[String] = []
 ## The run log, oldest first: [play seconds, kind, detail]. See RunLog for the kinds.
 var events: Array = []
 
-# --- The click charge (see Formulas.CHARGE_CLICKS). Not saved: it drains in seconds. ---
-## How full the charge is, 0 to 1.
+# --- The click charge (see Formulas.ICARUS_RATE). Not saved: it fades in seconds. ---
+## How fast the player has clicked lately, as a share of Formulas.ICARUS_RATE. At 1 they fly too close to the sun.
 var charge := 0.0
 ## Clicks a second, averaged over about Formulas.CLICK_RATE_SECONDS.
 var click_rate := 0.0
-## True from the moment the charge is full until it drops below Formulas.ULTRA_EXIT.
-var ultra := false
-## Seconds the click rate has stayed at Formulas.ICARUS_RATE or more.
-var icarus_time := 0.0
-## Seconds before the charge can build again, after the player was caught macro clicking.
+## Seconds left of the Icarus stage, after the player was caught macro clicking: clicks do nothing.
 var burnout := 0.0
 
 # --- Derived by Economy.refresh_effects(). Not saved. ---
@@ -152,7 +147,6 @@ func to_dict() -> Dictionary:
 		"faults_waited": faults_waited,
 		"count_lost": count_lost,
 		"best_click_rate": best_click_rate,
-		"ultras": ultras,
 		"icarus_falls": icarus_falls,
 		"tutorial": tutorial.duplicate(),
 		"events": events.duplicate(true),
@@ -186,7 +180,6 @@ static func from_dict(data: Dictionary) -> GameState:
 	s.faults_waited = maxi(0, int(data.get("faults_waited", 0)))
 	s.count_lost = clampf(float(data.get("count_lost", 0.0)), 0.0, Formulas.MAX_FLOAT)
 	s.best_click_rate = maxf(0.0, float(data.get("best_click_rate", 0.0)))
-	s.ultras = maxi(0, int(data.get("ultras", 0)))
 	s.icarus_falls = maxi(0, int(data.get("icarus_falls", 0)))
 	s.wear_due = maxf(-1.0, float(data.get("wear_due", -1.0)))
 	s.wear_started = maxi(0, int(data.get("wear_started", 0)))

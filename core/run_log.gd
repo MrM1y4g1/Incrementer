@@ -22,8 +22,7 @@ extends RefCounted
 ##   scrub        a bad bit scrubbed by solving its puzzle; detail is the bit
 ##   waited       a bad bit scrubbed itself; detail is the bit
 ##   tutorial     a tutorial step shown; detail is the step, or "skipped"
-##   ultra        the click charge filled; detail is the click rate, in clicks a second
-##   icarus       caught clicking faster than a person can; detail is the click rate
+##   icarus       the click charge filled, which takes a macro; detail is the click rate, in clicks a second
 ##   refresh      (1.4.x only) a worn bit refreshed in time; detail is {"bit": bit, "after": seconds worn}
 ##   ending       the V1 ending
 ## Clock levels aren't logged: there are over a hundred a run, and they say little about pacing.

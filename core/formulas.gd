@@ -47,23 +47,21 @@ const WEAR_SECONDS := 5.0
 const FAULT_SCRUB_SECONDS := 60.0
 ## Repairing a bad bit costs this share of the bit's value: the Count drops by about one bit.
 const FAULT_REPAIR_SHARE := 0.5
-## The click charge, a battery that rewards clicking fast. Each click adds 1/CHARGE_CLICKS of a full charge
-## and it drains CHARGE_DRAIN/CHARGE_CLICKS a second, so clicking faster than CHARGE_DRAIN times a second
-## fills it: in 10 seconds at 10 clicks a second, in a minute at 5. Every click is worth up to
-## CHARGE_BONUS_MAX more, in proportion to the charge. A full charge is ULTRA, which lasts until the charge
-## drops below ULTRA_EXIT, so a click that comes a moment late doesn't end it.
-const CHARGE_CLICKS := 60.0
-const CHARGE_DRAIN := 4.0
-const CHARGE_BONUS_MAX := 2.0
-const ULTRA_EXIT := 0.9
-## The click rate is an average over about CLICK_RATE_SECONDS. Held at ICARUS_RATE clicks a second or more
-## for ICARUS_HOLD seconds, which a person can't do but a macro or a held-down key can, the player flies too
-## close to the sun: the charge melts and can't build again for ICARUS_SECONDS. The hold means one slow frame
-## that delivers a burst of clicks at once is never mistaken for a macro.
-const CLICK_RATE_SECONDS := 1.0
+## The click charge: how fast the player has clicked lately, as a share of ICARUS_RATE. Each click adds
+## 1 / (ICARUS_RATE × CHARGE_SECONDS) and the charge decays with a CHARGE_SECONDS time constant, so it settles
+## at clicks a second ÷ ICARUS_RATE: half full at 10 a second. Above CHARGE_FROM (5 a second) every click
+## is worth more, rising towards CHARGE_BONUS_MAX more as the charge nears full.
+## Full takes ICARUS_RATE clicks a second or more for several seconds (about 4 at 30 a second, 6 at 25, never
+## at 20 or less), which takes a macro. Then the player flies too close to the sun: for ICARUS_SECONDS
+## clicks do nothing and the charge can't build. A full charge was a reward (ULTRA) in the first 1.5.0 test
+## build; the repo owner made it this punishment instead.
 const ICARUS_RATE := 20.0
-const ICARUS_HOLD := 1.5
-const ICARUS_SECONDS := 10.0
+const CHARGE_SECONDS := 4.0
+const CHARGE_FROM := 0.25
+const CHARGE_BONUS_MAX := 2.0
+const ICARUS_SECONDS := 15.0
+## The click rate in stats, and the one that tells speeding up from slowing down, is averaged over this long.
+const CLICK_RATE_SECONDS := 1.0
 
 
 ## Price of the next single unit.

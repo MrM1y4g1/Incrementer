@@ -4,7 +4,7 @@ extends PanelContainer
 
 signal closed
 
-const STAT_NAMES: PackedStringArray = ["Played", "This run", "Clicks", "Peak Count", "Total counted", "Register", "Clock", "Upgrades", "Overflows", "Carry earned", "Firmware", "Achievements", "Fastest clicking", "ULTRA charges", "Bad bits cleared", "Lost to bad bits"]
+const STAT_NAMES: PackedStringArray = ["Played", "This run", "Clicks", "Peak Count", "Total counted", "Register", "Clock", "Upgrades", "Overflows", "Carry earned", "Firmware", "Achievements", "Fastest clicking", "Caught macro clicking", "Bad bits cleared", "Lost to bad bits"]
 
 var _values := {}
 var _cells := {}
@@ -91,10 +91,8 @@ func refresh(state: GameState, content: Content) -> void:
 	var unlocked := state.achievements.size()
 	_set_stat("Achievements", "%d of %d" % [unlocked, content.achievements.size()])
 	_set_stat("Fastest clicking", "%.1f clicks a second" % state.best_click_rate)
-	var ultras := str(state.ultras)
-	if state.icarus_falls > 0:
-		ultras += ", caught macro clicking %d %s" % [state.icarus_falls, "time" if state.icarus_falls == 1 else "times"]
-	_set_stat("ULTRA charges", ultras)
+	var falls := "never" if state.icarus_falls == 0 else "%d %s" % [state.icarus_falls, "time" if state.icarus_falls == 1 else "times"]
+	_set_stat("Caught macro clicking", falls)
 	_set_stat("Bad bits cleared", "%d repaired, %d scrubbed, %d waited out" % [state.faults_repaired, state.faults_scrubbed, state.faults_waited])
 	_set_stat("Lost to bad bits", NumberFormat.amount(state.count_lost))
 	_summary.text = "ACHIEVEMENTS  ·  %d UNLOCKED  ·  +%d%% OUTPUT" % [unlocked, roundi(unlocked * Formulas.ACHIEVEMENT_BONUS * 100.0)]

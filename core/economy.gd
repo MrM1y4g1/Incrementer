@@ -179,60 +179,52 @@ static func _multiply(multipliers: PackedFloat64Array, tier: int, value: float) 
 
 # --- Clicking -------------------------------------------------------------------
 
-## What the next click adds, with the click charge's bonus.
+## What the next click adds, with the click charge's bonus. Nothing during the Icarus stage.
 static func click_value(state: GameState, content: Content) -> float:
 	refresh_effects(state, content)
+	if state.burnout > 0.0:
+		return 0.0
 	var value := CLICK_VALUE * state.click_multiplier + state.click_rate_share * count_per_second(state, content)
 	return minf(Formulas.MAX_FLOAT, value * (1.0 + charge_bonus(state)))
 
 
-## The share the click charge adds to every click: nothing when it's empty, CHARGE_BONUS_MAX when it's full.
+## The share the click charge adds to every click: nothing up to Formulas.CHARGE_FROM, rising to
+## CHARGE_BONUS_MAX at a full charge, which only a macro reaches.
 static func charge_bonus(state: GameState) -> float:
-	return Formulas.CHARGE_BONUS_MAX * state.charge
+	var share := (state.charge - Formulas.CHARGE_FROM) / (1.0 - Formulas.CHARGE_FROM)
+	return Formulas.CHARGE_BONUS_MAX * clampf(share, 0.0, 1.0)
 
 
-## Adds a click to the Count, then charges the battery. Returns what the click was worth.
+## Adds a click to the Count and to the click charge. A click that fills the charge is too fast for a person:
+## the player flies too close to the sun. During that Icarus stage clicks do nothing, not even count.
+## Returns what the click was worth.
 static func click(state: GameState, content: Content) -> float:
+	if state.burnout > 0.0:
+		return 0.0
 	var value := click_value(state, content)
 	state.total_clicks += 1
 	add_count(state, value)
 	state.click_rate += 1.0 / Formulas.CLICK_RATE_SECONDS
-	if state.burnout > 0.0:
-		return value
-	state.charge = minf(1.0, state.charge + 1.0 / Formulas.CHARGE_CLICKS)
-	if state.charge >= 1.0 and not state.ultra:
-		state.ultra = true
-		state.ultras += 1
-		state.record("ultra", snappedf(state.click_rate, 0.1))
+	state.charge += 1.0 / (Formulas.ICARUS_RATE * Formulas.CHARGE_SECONDS)
+	if state.charge >= 1.0:
+		_fly_too_close(state)
 	return value
 
 
-## Drains the charge, lets the click rate settle, and catches clicking that stays too fast for a person.
-## Runs on play time, after the clicks of a frame, so the rate it sees is an average and not one burst.
+## Lets the click rate and the charge fade, and counts down the Icarus stage. Both are averages over time, so
+## the charge stands for how fast the player has clicked lately.
 static func _drain_charge(state: GameState, seconds: float) -> void:
 	state.click_rate *= exp(-seconds / Formulas.CLICK_RATE_SECONDS)
 	state.best_click_rate = maxf(state.best_click_rate, state.click_rate)
-	state.charge = maxf(0.0, state.charge - Formulas.CHARGE_DRAIN / Formulas.CHARGE_CLICKS * seconds)
-	if state.ultra and state.charge < Formulas.ULTRA_EXIT:
-		state.ultra = false
-	if state.burnout > 0.0:
-		state.burnout = maxf(0.0, state.burnout - seconds)
-		return
-	if state.click_rate < Formulas.ICARUS_RATE:
-		state.icarus_time = 0.0
-		return
-	state.icarus_time += seconds
-	if state.icarus_time >= Formulas.ICARUS_HOLD:
-		_fly_too_close(state)
+	state.charge *= exp(-seconds / Formulas.CHARGE_SECONDS)
+	state.burnout = maxf(0.0, state.burnout - seconds)
 
 
-## Caught macro clicking: the charge melts and stays empty for ICARUS_SECONDS. Clicks still count.
+## Caught macro clicking: the charge melts, and clicks do nothing for ICARUS_SECONDS.
 static func _fly_too_close(state: GameState) -> void:
 	state.icarus_falls += 1
 	state.record("icarus", snappedf(state.click_rate, 0.1))
 	state.charge = 0.0
-	state.ultra = false
-	state.icarus_time = 0.0
 	state.burnout = Formulas.ICARUS_SECONDS
 
 

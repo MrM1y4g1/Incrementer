@@ -13,7 +13,7 @@ const SPEND_SHARE_WHILE_SAVING := 0.1
 enum Fix { REPAIR, SCRUB, WAIT }
 
 
-## At the default 4 clicks a second the click charge stays empty (Formulas.CHARGE_DRAIN), so pacing checks
+## At the default 4 clicks a second the click charge stays below Formulas.CHARGE_FROM, so pacing checks
 ## don't depend on it; the simulator plays a faster clicker separately.
 static func play(state: GameState, content: Content, seconds: float, step: float = 0.25, clicks_per_second: float = 4.0, fix: Fix = Fix.REPAIR) -> void:
 	var elapsed := 0.0
