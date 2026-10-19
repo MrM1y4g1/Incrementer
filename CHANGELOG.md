@@ -1,5 +1,43 @@
 # Changelog
 
+## 1.4.0 · 19 October 2026
+
+**New: a tutorial.** The first time each of these happens, the game pauses and a card explains it, next to the part of the screen it's about:
+- a new game: press Increment
+- the first Incrementer you can afford
+- the first upgrade you can afford
+- the first bit that starts to wear out
+- the first bit that goes bad
+
+After **Got it**, an amber frame pulses around what to do next until you've done it. **Skip tutorial** turns the rest off. Each step shows once per save; Start over shows them again. Saves from earlier versions skip the first three steps, but still explain worn bits.
+
+**Bad bits now wear out.** The machine's storage ages while you play, from the first run on:
+- Every couple of minutes a random bit starts to wear, anywhere in the register, below the Count or above it. It glows amber, turns red and flickers faster, and 20 seconds later it goes bad.
+- Click a worn bit, or press **Refresh** under the register, to rewrite it in time. It's free; it only takes noticing. A sound plays when a bit starts to wear.
+- Wear starts once the register is 16 bits wide, comes more often with every Overflow (up to three times as often), and stops after the ending. Spare rows now halve how often bits wear.
+- When a bit goes bad while it holds a 1 in the Count, the Count loses what that bit was worth, shown in red over the register. Stats keep a total of the Count lost to bad bits.
+- A bad bit works as before: the Count can't grow past it. A bit that goes bad below the Count stops the Count growing until it's cleared. Repair it (cheap for a low bit), scrub it, or wait. If the bad bit was the Count's top bit, the loss drops the Count below it, and it can grow back up to just under it.
+- Bits keep wearing while you're away, so bad bits pile up for a player who stops paying attention. In a narrow register they can come faster than they scrub themselves, holding the Count until you come back and repair or scrub them.
+- Widening no longer adds bad bits; they all come from wear now.
+- In the simulator about 20 bits wear out per run, roughly one every two minutes. A player who refreshes them stays on the same pace as before, ending at about 6 h 14 min. A player who never refreshes loses Count and time to every bad bit; in the simulator they finish at about 6 h 28 min, but in a narrow register bad bits can pile up faster than they scrub themselves.
+- Stats count the worn bits you refreshed. The run log records each refresh (with how long the bit had worn), each bit that went bad, and each tutorial step.
+
+**Scrub puzzles grow.** The parity puzzle gets bigger as the register widens, so it gets harder the further you are into a run and into the game:
+
+| Register | Word | Flipped bits |
+|---|---|---|
+| 8 and 16 bits | 4 × 4 | 1 |
+| 32 bits | 5 × 5 | 1 |
+| 64 bits | 5 × 5 | 2 |
+| 128 bits | 6 × 6 | 2 |
+| 256 bits | 6 × 6 | 3 |
+| 512 bits | 7 × 7 | 3 |
+| 1024 bits | 7 × 7 | 4 |
+
+Each flipped bit has a row and a column of its own, so the puzzle shows as many odd rows and odd columns as there are flips. Flip a bit wherever an odd row crosses an odd column until every line reads OK.
+
+- The register is drawn with rectangles and one texture only, so it doesn't make new graphics buffers in the browser while worn bits flicker.
+
 ## 1.3.3 · 19 October 2026
 
 - Fixed the browser version freezing after being left running for hours. Each time the music looped, the browser made a complete new copy of the track, about 100 MB every 2 minutes 11 seconds, until the tab ran out of memory. The music now plays through the game's own mixer, which loops it without copying, and the game starts with less memory too.
