@@ -10,8 +10,10 @@ extends Control
 ##   --autoplay=<seconds>   fast-forward a scripted player before the first frame
 ##   --open=<views>         open views at start, comma-separated:
 ##                          title, upgrades, stats, firmware, settings, save, start-over, overflow, ending, debug, toast,
-##                          fault (puts a bad bit just above the Count and fills up to it), scrub
-##                          (--autoplay and --capture skip the start screen unless --open asks for it)
+##                          fault (puts a bad bit just above the Count and fills up to it), scrub,
+##                          wear (starts three bits wearing, at different stages),
+##                          tutorial-<step> (shows that tutorial step: count, incrementer, upgrade, wear or bad-bit)
+##                          (--autoplay and --capture skip the start screen and the tutorial unless --open asks for them)
 ##   --capture=<png path>   save a screenshot after a few frames, then quit
 
 const REFRESH_SECONDS := 0.1
@@ -24,9 +26,11 @@ const TOAST_SECONDS := 4.0
 var _mode: int = Economy.BuyMode.ONE
 var _capture_path := ""
 
+var _register_panel: FramePanel
 var _register: RegisterDisplay
 var _register_label: Label
 var _bits_label: Label
+var _refresh_button: Button
 var _repair_button: Button
 var _scrub_button: Button
 var _count_label: Label
@@ -53,9 +57,20 @@ var _fx: FxLayer
 var _debug_panel: DebugPanel
 var _title: TitleScreen
 var _skip_title := false
-# Bad bits cleared so far and whether one was holding the Count, to notice changes between refreshes.
+# Bad bits cleared so far, bad bits now, bits worn this run and whether a bad bit was holding the Count,
+# to notice changes between refreshes. -1 until the first refresh.
 var _faults_cleared := -1
+var _bad_seen := -1
+var _wear_seen := -1
 var _was_blocked := false
+
+# The tutorial: the step whose card is open, the step whose hint is showing, and whether it's off
+# (for --autoplay and --capture).
+var _tutorial: TutorialOverlay
+var _hint: TutorialHint
+var _tutorial_step := ""
+var _hint_step := ""
+var _tutorial_off := false
 
 # Overlays: only one is open at a time, over a shared backdrop.
 var _backdrop: ColorRect
@@ -84,8 +99,10 @@ func _ready() -> void:
 	Settings.changed.connect(_apply_settings)
 	_apply_settings()
 	_apply_dev_args()
-	# --autoplay may have cleared bad bits since the settings refresh; that is no reason to flash.
+	# --autoplay may have changed bad bits since the settings refresh; that is no reason to flash or beep.
 	_faults_cleared = -1
+	_bad_seen = -1
+	_wear_seen = -1
 
 	var timer := Timer.new()
 	timer.wait_time = REFRESH_SECONDS
@@ -118,7 +135,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	var key := event as InputEventKey
 	if key == null or not key.pressed:
 		return
-	if key.keycode == KEY_SPACE and not _backdrop.visible and not _title.visible:
+	if key.keycode == KEY_SPACE and not _backdrop.visible and not _title.visible and not _tutorial.visible:
 		_on_increment()
 		get_viewport().set_input_as_handled()
 		return
@@ -127,7 +144,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	if key.keycode == KEY_F3 and _debug_panel != null:
 		_debug_panel.visible = not _debug_panel.visible
 	elif key.keycode == KEY_ESCAPE:
-		_close_overlays()
+		if _tutorial.visible:
+			_on_tutorial_dismissed()
+		else:
+			_close_overlays()
 
 
 # --- Layout -------------------------------------------------------------------
@@ -153,6 +173,8 @@ func _build() -> void:
 
 	_fx = FxLayer.new()
 	add_child(_fx)
+	_hint = TutorialHint.new()
+	add_child(_hint)
 	# Above the machine, below the overlays, so Settings and the Start over question open over it.
 	_title = TitleScreen.new()
 	_title.continue_pressed.connect(_on_title_continue)
@@ -168,14 +190,15 @@ func _build_top() -> Control:
 	top.add_theme_constant_override("separation", 14)
 
 	var register_panel := FramePanel.new()
+	_register_panel = register_panel
 	register_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	register_panel.custom_minimum_size = Vector2(0, 156)
 	register_panel.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	register_panel.tooltip_text = "Click the register, or press Space, to increment"
+	register_panel.tooltip_text = "Click the register, or press Space, to increment. Click a worn bit to refresh it."
 	register_panel.gui_input.connect(func(event: InputEvent) -> void:
 		var click := event as InputEventMouseButton
 		if click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT:
-			_on_increment())
+			_on_register_clicked())
 	top.add_child(register_panel)
 	var register_box := VBoxContainer.new()
 	register_box.add_theme_constant_override("separation", 8)
@@ -199,6 +222,10 @@ func _build_top() -> Control:
 	_bits_label.clip_text = true
 	_bits_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	status_row.add_child(_bits_label)
+	_refresh_button = _fault_button(_on_refresh_all)
+	_refresh_button.theme_type_variation = &"WearButton"
+	_refresh_button.text = "REFRESH"
+	status_row.add_child(_refresh_button)
 	_repair_button = _fault_button(_on_repair)
 	status_row.add_child(_repair_button)
 	_scrub_button = _fault_button(_open_scrub)
@@ -456,6 +483,12 @@ To keep a copy, press Copy save and paste it somewhere safe. Import, in Save dat
 	_toasts.add_theme_constant_override("separation", 8)
 	add_child(_toasts)
 
+	# Over everything else, toasts included, because the game is paused while it's open.
+	_tutorial = TutorialOverlay.new()
+	_tutorial.dismissed.connect(_on_tutorial_dismissed)
+	_tutorial.skipped.connect(_on_tutorial_skipped)
+	add_child(_tutorial)
+
 	if OS.is_debug_build():
 		_debug_panel = DebugPanel.new()
 		_debug_panel.visible = false
@@ -571,20 +604,37 @@ func _refresh() -> void:
 
 	var fault := Economy.next_fault(state)
 	var blocked := Economy.is_blocked(state)
+	var wear: Dictionary[int, float] = {}
+	var most_worn := -1
+	for bit: int in state.wearing:
+		wear[bit] = Economy.wear_level(state, bit)
+		if most_worn < 0 or wear[bit] > wear[most_worn]:
+			most_worn = bit
 	_register.show_faults(state.bad_bits, blocked, state.blocked_time / state.scrub_seconds if blocked else 0.0)
+	_register.show_wear(wear)
 	_register.show_value(state.register_bits, state.count, full)
 	_register_label.text = "REGISTER  ·  %d-BIT  ·  HOLDS %s" % [state.register_bits, NumberFormat.amount(cap)]
-	if full:
+	if blocked:
+		var held := "holds the Count" if state.count <= Formulas.below_bit(fault) else "stops the Count growing"
+		_bits_label.text = "Bad bit %d %s. It scrubs itself in %s." % [fault, held, NumberFormat.duration(Economy.scrub_time_left(state))]
+		_bits_label.add_theme_color_override("font_color", Palette.FAULT)
+	elif most_worn >= 0:
+		var left := NumberFormat.duration((1.0 - wear[most_worn]) * Formulas.WEAR_SECONDS)
+		if wear.size() == 1:
+			_bits_label.text = "Bit %d is wearing out: it goes bad in %s. Click it or press Refresh." % [most_worn, left]
+		else:
+			_bits_label.text = "%d bits are wearing out. Bit %d goes bad in %s." % [wear.size(), most_worn, left]
+		_bits_label.add_theme_color_override("font_color", Palette.AMBER)
+	elif full:
 		_bits_label.text = "Full. Widen the register or Overflow to keep counting." if Economy.can_overflow(state) else "Full. Widen the register to keep counting."
 		_bits_label.add_theme_color_override("font_color", Palette.AMBER)
-	elif blocked:
-		_bits_label.text = "Bad bit %d holds the Count. It scrubs itself in %s." % [fault, NumberFormat.duration(Economy.scrub_time_left(state))]
-		_bits_label.add_theme_color_override("font_color", Palette.FAULT)
 	else:
 		_bits_label.text = "%.1f of %d bits used" % [log(state.count + 1.0) / log(2.0), state.register_bits]
 		if fault >= 0:
 			_bits_label.text += "  ·  bad bit ahead at %d" % fault
 		_bits_label.add_theme_color_override("font_color", Palette.MUTED)
+	_refresh_button.visible = most_worn >= 0
+	_refresh_button.text = "REFRESH" if wear.size() <= 1 else "REFRESH %d" % wear.size()
 	_repair_button.visible = blocked
 	_scrub_button.visible = blocked
 	if blocked:
@@ -628,6 +678,7 @@ func _refresh() -> void:
 		_stats_panel.refresh(state, content)
 	if _firmware_panel.visible:
 		_firmware_panel.refresh(state, content)
+	_check_tutorial(state, content)
 
 
 func _refresh_widen(state: GameState, content: Content) -> void:
@@ -712,21 +763,46 @@ func _close_overlays() -> void:
 	_backdrop.visible = false
 
 
-## Sound, a first-time explanation, and a flash when a bad bit clears. The scrub puzzle closes if its bit
-## was cleared some other way.
+## Sounds when a bit starts to wear and when one goes bad or starts holding the Count, and a flash when a
+## bad bit clears. The scrub puzzle closes if its bit was cleared some other way. The tutorial explains
+## the first worn and bad bits.
 func _notice_faults(state: GameState, blocked: bool) -> void:
 	var cleared := state.faults_repaired + state.faults_scrubbed + state.faults_waited
-	if blocked and not _was_blocked:
+	if (blocked and not _was_blocked) or (_bad_seen >= 0 and state.bad_bits.size() > _bad_seen):
 		Audio.play("fault", 0.0)
-		if cleared == 0:
-			_toast(&"FaultToast", "BAD BIT", Palette.FAULT, "Bit %d has gone bad" % Economy.next_fault(state),
-				"The Count can't pass it. Repair it with Count, scrub it by solving its parity, or wait %d seconds." % roundi(state.scrub_seconds), 10.0)
+	elif _wear_seen >= 0 and state.wear_started > 0 and state.wear_started != _wear_seen:
+		Audio.play("wear", 0.0)
 	if _faults_cleared >= 0 and cleared > _faults_cleared:
 		_register.flash(Color(Palette.CYAN, 0.5))
 	if _scrub_panel.visible and _scrub_panel.bit != Economy.next_fault(state):
 		_close_overlays()
 	_faults_cleared = cleared
+	_bad_seen = state.bad_bits.size()
+	_wear_seen = state.wear_started
 	_was_blocked = blocked
+
+
+## Clicking a worn bit, or right next to one, refreshes it. Anywhere else on the register increments.
+func _on_register_clicked() -> void:
+	var bit := _register.worn_bit_near(_register.get_local_mouse_position())
+	if bit < 0:
+		_on_increment()
+		return
+	if Game.refresh_bit(bit):
+		_on_refreshed(_register.get_global_transform() * _register.bit_rect(bit).get_center(), 1)
+
+
+func _on_refresh_all() -> void:
+	var refreshed := Game.refresh_all()
+	if refreshed > 0:
+		var rect := _refresh_button.get_global_rect()
+		_on_refreshed(Vector2(rect.get_center().x, rect.position.y), refreshed)
+
+
+func _on_refreshed(at: Vector2, bits: int) -> void:
+	Audio.play("refresh")
+	_fx.float_text(at, "REFRESHED" if bits == 1 else "%d REFRESHED" % bits, Palette.CYAN)
+	_refresh()
 
 
 func _on_repair() -> void:
@@ -773,6 +849,8 @@ func _copy_save() -> void:
 
 func _confirm_start_over() -> void:
 	SaveManager.start_over()
+	_hint_step = ""
+	_hint.stop()
 	_close_overlays()
 	_title.visible = false
 	get_viewport().gui_release_focus()
@@ -826,6 +904,112 @@ func _on_overflowed(carry: float) -> void:
 func _on_widened(_bits: int) -> void:
 	_register.flash(Color(Palette.CYAN, 0.6))
 	_fx.flash(Color(Palette.CYAN, 0.12), 0.4)
+
+
+# --- Tutorial -----------------------------------------------------------------
+
+## Ends the hint once its step is done, keeps it on its target, and opens the next step that is due,
+## unless the start screen or another panel is open.
+func _check_tutorial(state: GameState, content: Content) -> void:
+	if _hint_step != "":
+		if Tutorial.is_done(_hint_step, state):
+			_hint_step = ""
+			_hint.stop()
+		else:
+			_hint.place(_local_rect(_tutorial_target(_hint_step)))
+	if _tutorial_off or _tutorial_step != "" or _title.visible or _backdrop.visible:
+		return
+	var step := Tutorial.next_step(state, content)
+	if step != "":
+		_show_tutorial(step)
+
+
+## Pauses the game and explains a step, next to the part of the screen it's about.
+func _show_tutorial(step: String) -> void:
+	_tutorial_step = step
+	Tutorial.mark_shown(Game.state, step)
+	Game.paused = true
+	_hint_step = ""
+	_hint.stop()
+	if step == "incrementer":
+		_show_tab(false)
+	elif step == "upgrade":
+		_show_tab(true)
+	# Let the layout settle after a tab switch before measuring where the target is.
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var text := _tutorial_text(step, Game.state, Game.content)
+	_tutorial.open(text[0], text[1], _local_rect(_tutorial_target(step)))
+
+
+func _on_tutorial_dismissed() -> void:
+	var step := _tutorial_step
+	_close_tutorial()
+	# Point at what to do next until the player has done it.
+	if step != "" and not Tutorial.is_done(step, Game.state):
+		_hint_step = step
+		_hint.show_on(_local_rect(_tutorial_target(step)))
+
+
+func _on_tutorial_skipped() -> void:
+	Tutorial.skip(Game.state)
+	_close_tutorial()
+
+
+func _close_tutorial() -> void:
+	_tutorial_step = ""
+	_tutorial.visible = false
+	Game.paused = false
+	get_viewport().gui_release_focus()
+
+
+## What each step points at.
+func _tutorial_target(step: String) -> Control:
+	match step:
+		"count":
+			return _increment_button
+		"incrementer":
+			return _rows[0]
+		"upgrade":
+			for card: UpgradeCard in _cards:
+				if card.visible and Economy.can_buy_upgrade(Game.state, card.upgrade):
+					return card
+			return _upgrades_tab
+	return _register_panel
+
+
+## [title, body] for a step, with the numbers the player sees right now.
+func _tutorial_text(step: String, state: GameState, content: Content) -> Array[String]:
+	match step:
+		"count":
+			return ["Count up", "You are a counter inside a machine. Press INCREMENT, or Space, to add 1 to the Count.\n\nThe register at the top holds the Count in binary: each lit cell is a 1. An %d-bit register holds up to %s. Widen it to count higher." % [
+				state.register_bits, NumberFormat.amount(Formulas.register_cap(state.register_bits))]]
+		"incrementer":
+			return ["Buy an Incrementer", "You can afford an Incrementer. Each one adds %s to the Count every second by itself, so the Count keeps rising while you do other things.\n\nParts cost more each time you buy one, and every %d of the same part doubles its output." % [
+				NumberFormat.rate(Economy.layer_rate(state, content, 0)), Formulas.MILESTONE_EVERY]]
+		"upgrade":
+			var target := _tutorial_target("upgrade") as UpgradeCard
+			var which := ""
+			if target != null:
+				which = "%s (%s) costs %s. " % [target.upgrade.display_name, UpgradeCard.describe(target.upgrade, content), NumberFormat.amount(target.upgrade.cost)]
+			return ["Buy an upgrade", "Upgrades are one-off boosts, bought with Count. %sBuy it here, under Upgrades.\n\nNew upgrades appear as you buy parts and widen the register. They last until you Overflow." % which]
+		"wear":
+			var bit := -1
+			for worn: int in state.wearing:
+				bit = worn
+			return ["A bit is wearing out", "The machine's storage is old. Bit %d has started to wear: it glows amber, turns red, and %d seconds later it goes bad.\n\nClick the bit, or press REFRESH under the register, to rewrite it in time. Bits wear out anywhere in the register, and more often as the machine ages." % [
+				bit, roundi(Formulas.WEAR_SECONDS)]]
+		"bad bit":
+			return ["A bit has gone bad", "Bit %d went bad before it was refreshed. The Count can't grow past a bad bit: it stops just below it, or if it's already higher, it stops growing.\n\nREPAIR the bit with Count, SCRUB it for free by solving a small parity puzzle, or wait: %d seconds after it starts holding the Count, it scrubs itself." % [
+				Economy.next_fault(state), roundi(state.scrub_seconds)]]
+	return ["", ""]
+
+
+## Where a control is, in this screen's coordinates.
+func _local_rect(control: Control) -> Rect2:
+	var to_local := get_global_transform().affine_inverse()
+	var rect := control.get_global_rect()
+	return Rect2(to_local * rect.position, rect.size)
 
 
 # --- Input --------------------------------------------------------------------
@@ -894,9 +1078,12 @@ func _apply_dev_args() -> void:
 	for arg: String in OS.get_cmdline_user_args():
 		if arg.begins_with("--autoplay="):
 			_skip_title = true
+			_tutorial_off = true
 			AutoPlayer.play(Game.state, Game.content, arg.get_slice("=", 1).to_float())
 		elif arg.begins_with("--capture="):
 			_skip_title = true
+			_tutorial_off = true
+			_tutorial.read_seconds = 0.0
 			_capture_path = arg.get_slice("=", 1)
 		elif arg.begins_with("--open="):
 			for view: String in arg.get_slice("=", 1).split(","):
@@ -921,6 +1108,23 @@ func _open_view(view: String) -> void:
 			_refresh()
 		"scrub":
 			_open_scrub()
+		"wear":
+			# For screenshots: three bits wearing, just started, halfway and nearly bad.
+			var state := Game.state
+			var middle := floori(state.register_bits / 2.0)
+			for pick: Vector2 in [Vector2(state.register_bits - 3, 0.05), Vector2(middle, 0.5), Vector2(2, 0.92)]:
+				if not state.bad_bits.has(int(pick.x)):
+					state.wearing[int(pick.x)] = Formulas.WEAR_SECONDS * pick.y
+			_refresh()
+		"tutorial-count", "tutorial-incrementer", "tutorial-upgrade", "tutorial-wear", "tutorial-bad-bit":
+			var step := view.trim_prefix("tutorial-").replace("-", " ")
+			var middle := floori(Game.state.register_bits / 2.0)
+			if step == "wear" and Game.state.wearing.is_empty():
+				Game.state.wearing[middle] = 12.0
+			if step == "bad bit" and Game.state.bad_bits.is_empty():
+				Game.state.bad_bits.append(middle)
+			_refresh()
+			_show_tutorial(step)
 		"upgrades":
 			_show_tab(true)
 		"stats":

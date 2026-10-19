@@ -1,8 +1,8 @@
 class_name ScrubPanel
 extends PanelContainer
-## The scrub puzzle for the bad bit holding the Count: a word of bits with one flipped. Every row and column
-## should hold an even number of 1s; flipping the bit where the odd row and the odd column cross fixes both.
-## Solving it clears the bad bit for free.
+## The scrub puzzle for the bad bit holding the Count: a word of bits with some flipped, more and in a bigger
+## word the wider the register. Every row and column should hold an even number of 1s; flipping a bit where
+## an odd row and an odd column cross fixes both. Solving it clears the bad bit for free.
 
 signal closed
 signal solved
@@ -14,6 +14,7 @@ var bit := -1
 
 var _grid: ParityGrid
 var _title: Label
+var _help: Label
 var _table: GridContainer
 var _cells: Array[Button] = []
 var _row_marks: Array[Label] = []
@@ -29,9 +30,9 @@ func _init() -> void:
 	_title = _label("", 12, Palette.FAULT)
 	_title.add_theme_font_override("font", Fonts.heading())
 	root.add_child(_title)
-	var help := _label("One bit in this word has flipped. Every row and column should hold an even number of 1s, and the lines marked ODD don't. Click bits to flip them until every line reads OK.", 15, Palette.ICE)
-	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	root.add_child(help)
+	_help = _label("", 15, Palette.ICE)
+	_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	root.add_child(_help)
 
 	var center := CenterContainer.new()
 	root.add_child(center)
@@ -57,6 +58,10 @@ func open_for(state: GameState) -> void:
 	bit = Economy.next_fault(state)
 	_grid = Economy.scrub_puzzle(state)
 	_title.text = "SCRUB BAD BIT %d" % bit
+	if _grid.flips == 1:
+		_help.text = "One bit in this word has flipped. Every row and column should hold an even number of 1s, and the lines marked ODD don't. Click bits to flip them until every line reads OK."
+	else:
+		_help.text = "%d bits in this word have flipped, each in its own row and column. Every row and column should hold an even number of 1s, and the lines marked ODD don't. Flip a bit where an odd row crosses an odd column, until every line reads OK." % _grid.flips
 	for child: Node in _table.get_children():
 		child.queue_free()
 	_cells.clear()

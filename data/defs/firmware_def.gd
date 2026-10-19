@@ -28,7 +28,7 @@ enum Effect {
 	MILESTONE_STEP,
 	## A bad bit holding the Count scrubs itself after `value` seconds.
 	SCRUB_SECONDS,
-	## Widening maps in `value` times as many bad bits.
+	## Bits start wearing out `value` times as often.
 	FAULT_RATE,
 }
 

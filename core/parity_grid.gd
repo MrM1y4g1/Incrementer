@@ -1,24 +1,47 @@
 class_name ParityGrid
 extends RefCounted
 ## The scrub puzzle for a bad bit: a square word of bits in which every row and every column should hold an
-## even number of set bits. One bit is flipped, so one row and one column check out odd, and the flipped bit
-## sits where they cross. Flip bits until every line checks out. The same seed always makes the same word.
+## even number of set bits. Some bits are flipped, each in a row and a column of its own, so that many rows
+## and columns check out odd, and the flipped bits sit where they cross. Flip bits until every line checks
+## out. The same seed always makes the same word.
+##
+## The puzzle grows with the register: wider registers come later in a run and later in the game, so they
+## get bigger words with more flipped bits.
+
+## Register width → [word size, flipped bits].
+const LEVELS := {
+	8: [4, 1], 16: [4, 1], 32: [5, 1], 64: [5, 2], 128: [6, 2], 256: [6, 3], 512: [7, 3], 1024: [7, 4],
+}
 
 var size := 4
+## How many bits were flipped.
+var flips := 1
 ## Row by row, 1 for a set bit.
 var cells := PackedByteArray()
 
 
-## The puzzle for a bad bit: bigger words for higher bits.
-static func size_for(bit: int) -> int:
-	if bit < 128:
-		return 4
-	return 5 if bit < 512 else 6
+## The word size for a register of this width.
+static func size_for(register_bits: int) -> int:
+	return int(_level(register_bits)[0])
 
 
-static func make(grid_size: int, grid_seed: int) -> ParityGrid:
+## How many bits are flipped in the puzzle for a register of this width.
+static func flips_for(register_bits: int) -> int:
+	return int(_level(register_bits)[1])
+
+
+static func _level(register_bits: int) -> Array:
+	var level: Array = LEVELS[8]
+	for bits: int in LEVELS:
+		if register_bits >= bits:
+			level = LEVELS[bits]
+	return level
+
+
+static func make(grid_size: int, grid_seed: int, flip_count: int = 1) -> ParityGrid:
 	var grid := ParityGrid.new()
 	grid.size = grid_size
+	grid.flips = clampi(flip_count, 1, grid_size)
 	grid.cells.resize(grid_size * grid_size)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = grid_seed
@@ -37,8 +60,25 @@ static func make(grid_size: int, grid_seed: int) -> ParityGrid:
 		for row: int in last:
 			ones += grid.cells[row * grid_size + column]
 		grid.cells[last * grid_size + column] = ones % 2
-	grid.flip(rng.randi_range(0, grid_size * grid_size - 1))
+	# Each flip gets a row and a column no other flip uses, so every flip shows as an odd row and an odd column.
+	var rows := _shuffled(grid_size, rng)
+	var columns := _shuffled(grid_size, rng)
+	for i: int in grid.flips:
+		grid.flip(rows[i] * grid_size + columns[i])
 	return grid
+
+
+## 0 to count - 1 in a random order.
+static func _shuffled(count: int, rng: RandomNumberGenerator) -> PackedInt32Array:
+	var order := PackedInt32Array()
+	for i: int in count:
+		order.append(i)
+	for i: int in range(count - 1, 0, -1):
+		var j := rng.randi_range(0, i)
+		var swap := order[i]
+		order[i] = order[j]
+		order[j] = swap
+	return order
 
 
 func flip(index: int) -> void:

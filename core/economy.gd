@@ -17,8 +17,8 @@ const AUTOBUY_SPEND_SHARE := 0.1
 # --- Production -----------------------------------------------------------------
 
 ## Runs production for `seconds`. Every layer adds to the layer below it; layer 1 adds to the Count.
-## All layers use their amounts from the start of the step. A bad bit holding the Count scrubs itself
-## as the time passes.
+## All layers use their amounts from the start of the step. Bits wear out as the time passes, and a bad
+## bit holding the Count scrubs itself.
 static func advance(state: GameState, content: Content, seconds: float) -> void:
 	if seconds <= 0.0:
 		return
@@ -28,6 +28,7 @@ static func advance(state: GameState, content: Content, seconds: float) -> void:
 		state.layer_amount[i - 1] = minf(Formulas.MAX_FLOAT, state.layer_amount[i - 1] + start[i] * layer_rate(state, content, i) * seconds)
 	if layer_count > 0:
 		add_count(state, start[0] * layer_rate(state, content, 0) * seconds)
+	_wear(state, content, seconds)
 	_wait_out_fault(state, seconds)
 
 
@@ -81,10 +82,11 @@ static func count_per_second(state: GameState, content: Content) -> float:
 	return minf(Formulas.MAX_FLOAT, state.layer_amount[0] * layer_rate(state, content, 0))
 
 
-## Adds to the Count without passing the register cap or a bad bit. Returns what was actually added.
+## Adds to the Count without passing the register cap or a bad bit. A Count already above a bad bit
+## stays where it is. Returns what was actually added.
 static func add_count(state: GameState, amount: float) -> float:
 	var before := state.count
-	state.count = minf(capacity(state), state.count + amount)
+	state.count = maxf(before, minf(capacity(state), state.count + amount))
 	var added := maxf(0.0, state.count - before)
 	# After the ending a full register adds the largest float every tick, which would overflow to INF.
 	state.total_produced = minf(Formulas.MAX_FLOAT, state.total_produced + added)
@@ -301,10 +303,8 @@ static func widen(state: GameState, content: Content) -> bool:
 	if not can_widen(state, content):
 		return false
 	state.count -= widen_cost(state)
-	var old_bits := state.register_bits
 	state.register_bits = Formulas.next_width(state.register_bits)
 	state.record("widen", state.register_bits)
-	_place_faults(state, old_bits, state.register_bits)
 	return true
 
 
@@ -344,8 +344,7 @@ static func overflow(state: GameState, content: Content) -> float:
 	state.layer_amount = fresh.layer_amount
 	state.layer_bought = fresh.layer_bought
 	state.upgrades.clear()
-	state.bad_bits.clear()
-	state.blocked_time = 0.0
+	_clear_wear(state)
 	# Different every run, but the same for the same game, so the simulator replays exactly.
 	state.run_seed = hash([state.overflows, state.play_time, state.total_carry])
 	state.effects_dirty = true
@@ -356,7 +355,7 @@ static func overflow(state: GameState, content: Content) -> float:
 
 # --- Bad bits -------------------------------------------------------------------
 
-## The most the Count can hold right now: the register's cap, or just under the lowest bad bit.
+## The most the Count can grow to right now: the register's cap, or just under the lowest bad bit.
 static func capacity(state: GameState) -> float:
 	var cap := Formulas.register_cap(state.register_bits)
 	if not state.bad_bits.is_empty():
@@ -364,12 +363,14 @@ static func capacity(state: GameState) -> float:
 	return cap
 
 
-## The lowest bad bit ahead of the Count, or -1 if there is none.
+## The lowest bad bit, or -1 if there is none. It's the one that holds the Count, and the one Repair,
+## Scrub and waiting clear.
 static func next_fault(state: GameState) -> int:
 	return state.bad_bits[0] if not state.bad_bits.is_empty() else -1
 
 
-## True when the Count has reached the lowest bad bit and can't grow until it's cleared.
+## True when the Count has reached the lowest bad bit, or was already past it when it went bad, and can't
+## grow until it's cleared.
 static func is_blocked(state: GameState) -> bool:
 	return not state.bad_bits.is_empty() and state.count >= Formulas.below_bit(state.bad_bits[0])
 
@@ -400,10 +401,12 @@ static func scrub(state: GameState) -> bool:
 	return true
 
 
-## The puzzle for the lowest bad bit. The same bit in the same run always gets the same puzzle.
+## The puzzle for the lowest bad bit, sized for the register. The same bit in the same run, at the same
+## width, always gets the same puzzle.
 static func scrub_puzzle(state: GameState) -> ParityGrid:
 	var bit := maxi(0, next_fault(state))
-	return ParityGrid.make(ParityGrid.size_for(bit), hash([state.run_seed, bit]))
+	var bits := state.register_bits
+	return ParityGrid.make(ParityGrid.size_for(bits), hash([state.run_seed, bit]), ParityGrid.flips_for(bits))
 
 
 ## Seconds until the bad bit holding the Count scrubs itself.
@@ -411,31 +414,104 @@ static func scrub_time_left(state: GameState) -> float:
 	return maxf(0.0, state.scrub_seconds - state.blocked_time)
 
 
-## The Settings switch. Switching off clears this run's bad bits too.
+## The Settings switch. Switching off clears this run's worn and bad bits too.
 static func set_faults_on(state: GameState, on: bool) -> void:
 	if state.faults_on == on:
 		return
 	state.faults_on = on
 	if not on:
-		state.bad_bits.clear()
-		state.blocked_time = 0.0
+		_clear_wear(state)
 	state.record("setting", "bad bits %s" % ("on" if on else "off"))
 
 
-## Maps in bad bits among the bits a widening just added: none in the first run, more as the machine ages,
-## fewer with Spare rows. The run's seed and the new width decide how many and where.
-static func _place_faults(state: GameState, from_bit: int, to_bit: int) -> void:
-	if not state.faults_on or state.overflows < 1:
+# --- Worn bits ------------------------------------------------------------------
+
+## How far a worn bit has gone, from 0 when it starts to wear to 1 when it goes bad. 0 for a healthy bit.
+static func wear_level(state: GameState, bit: int) -> float:
+	var seconds: float = state.wearing.get(bit, 0.0)
+	return clampf(seconds / Formulas.WEAR_SECONDS, 0.0, 1.0)
+
+
+## Rewrites a worn bit before it goes bad. Free: it only takes noticing.
+static func refresh(state: GameState, bit: int) -> bool:
+	if not state.wearing.has(bit):
+		return false
+	state.record("refresh", {"bit": bit, "after": snappedf(state.wearing[bit], 0.1)})
+	state.wearing.erase(bit)
+	state.faults_refreshed += 1
+	return true
+
+
+## Refreshes every worn bit. Returns how many there were.
+static func refresh_all(state: GameState) -> int:
+	var refreshed := 0
+	for bit: int in state.wearing.keys():
+		if refresh(state, bit):
+			refreshed += 1
+	return refreshed
+
+
+## Ages the worn bits, turns those that have worn for WEAR_SECONDS into bad bits, and starts new ones on
+## schedule. Nothing wears in a register narrower than WEAR_FROM_BITS, after the ending, or with the switch off.
+## Bits keep wearing while a bad bit holds the Count, so a player who looks away comes back to a pile of bad
+## bits. That is intended (the repo owner's call in 1.4.0): bad bits are the game's enemy.
+static func _wear(state: GameState, content: Content, seconds: float) -> void:
+	if not state.faults_on or state.ended or state.register_bits < Formulas.WEAR_FROM_BITS:
 		return
-	var rate := Formulas.fault_rate(state.overflows) * state.fault_rate_multiplier
+	refresh_effects(state, content)
+	for bit: int in state.wearing.keys():
+		state.wearing[bit] += seconds
+		if state.wearing[bit] >= Formulas.WEAR_SECONDS:
+			state.wearing.erase(bit)
+			_go_bad(state, bit)
+	if state.wear_due < 0.0:
+		state.wear_due = _wear_gap(state)
+	state.wear_due -= seconds
+	while state.wear_due <= 0.0:
+		_start_wearing(state)
+		state.wear_due += _wear_gap(state)
+
+
+## Picks a healthy bit anywhere in the register and starts it wearing. The seed and the number of bits worn
+## so far this run decide which, so a run always wears the same bits in the same order.
+static func _start_wearing(state: GameState) -> void:
+	var rng := _wear_rng(state, "bit")
+	state.wear_started += 1
+	# A few tries, in case the pick is already worn or bad.
+	for _try: int in 8:
+		var bit := rng.randi_range(0, state.register_bits - 1)
+		if not state.wearing.has(bit) and not state.bad_bits.has(bit):
+			state.wearing[bit] = 0.0
+			return
+
+
+## Seconds until the next bit starts to wear: between half and one and a half times the average interval.
+static func _wear_gap(state: GameState) -> float:
+	var rng := _wear_rng(state, "gap")
+	return Formulas.wear_interval(state.overflows, state.fault_rate_multiplier) * (0.5 + rng.randf())
+
+
+static func _wear_rng(state: GameState, purpose: String) -> RandomNumberGenerator:
 	var rng := RandomNumberGenerator.new()
-	rng.seed = hash([state.run_seed, to_bit])
-	var faults := int(rate) + (1 if rng.randf() < rate - int(rate) else 0)
-	for _fault: int in faults:
-		var bit := rng.randi_range(from_bit, to_bit - 1)
-		if not state.bad_bits.has(bit):
-			state.bad_bits.append(bit)
+	rng.seed = hash([state.run_seed, state.wear_started, purpose])
+	return rng
+
+
+## A worn bit goes bad. A new lowest bad bit starts its own wait to scrub itself.
+static func _go_bad(state: GameState, bit: int) -> void:
+	if state.bad_bits.is_empty() or bit < state.bad_bits[0]:
+		state.blocked_time = 0.0
+	state.bad_bits.append(bit)
 	state.bad_bits.sort()
+	state.record("bad bit", bit)
+
+
+static func _clear_wear(state: GameState) -> void:
+	state.bad_bits.clear()
+	state.blocked_time = 0.0
+	state.wearing.clear()
+	state.wear_due = -1.0
+	state.wear_started = 0
 
 
 ## A bad bit holding the Count scrubs itself after scrub_seconds of holding it.

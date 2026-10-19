@@ -2,6 +2,43 @@
 
 Newest first. Screenshots are captured from the real game at 1280 × 720. The `--autoplay` flag fast-forwards a scripted player, so the later shots show a run in progress.
 
+## 19 Oct 2026 · 1.4.0: a tutorial, and bits that wear out
+
+**What you asked for:**
+- a tutorial for the first increments, the first Incrementer, the first upgrade and the first bad bit, with the game paused while it explains
+- more bad bits: bits that slowly go bad, moving towards red before they die, at random and anywhere in the register
+- scrub puzzles that grow the further you get, so you have to flip several bits
+- worn bits that go bad after 20 seconds rather than 90
+- no protection for players who look away: bad bits may pile up
+
+**The tutorial.** The first time each of five things happens, the game pauses: nothing is produced, nothing wears, and the play clock stops. The screen dims except for the part being explained, which gets an amber frame, and a card beside it explains what to do. After **Got it** the frame keeps pulsing on that part until you've done it. **Skip tutorial** turns the rest off. The buttons wait 0.8 seconds before they work, so someone clicking fast doesn't skip a card unread. Saves from before 1.4.0 skip the first three steps but still get the two about worn bits.
+
+![The first step](screenshots/2026-10-19-v140-01-tutorial-count.png)
+
+![The first Incrementer](screenshots/2026-10-19-v140-02-tutorial-incrementer.png)
+
+**Worn bits.** From 16 bits on, every couple of minutes a random bit starts to wear, anywhere in the register. It glows amber, reddens and flickers faster, and after 20 seconds it goes bad. Click it, or press **Refresh** under the register, to save it. On wide registers the cells are tiny, so a click lands on the nearest worn bit within a cell's reach, and in a single row the worn bits get markers above and below. Bits wear more often after each Overflow, up to three times as often; Spare rows halve that.
+
+A bad bit below the Count now stops it growing. Until now bad bits only appeared above the Count.
+
+![The first worn bit](screenshots/2026-10-19-v140-03-tutorial-wear.png)
+
+![Three worn bits at 64 bits](screenshots/2026-10-19-v140-04-worn-bits.png)
+
+![The first bad bit](screenshots/2026-10-19-v140-05-tutorial-bad-bit.png)
+
+![Worn bits at 256 bits](screenshots/2026-10-19-v140-06-late-worn-bits.png)
+
+**Bigger scrub puzzles.** The word grows from 4 × 4 with one flipped bit to 7 × 7 with four, as the register widens. Each flip has its own row and column, so you pair odd rows with odd columns.
+
+![A 256-bit puzzle: three flips](screenshots/2026-10-19-v140-07-scrub-256-bit.png)
+
+![A 1024-bit puzzle: four flips](screenshots/2026-10-19-v140-08-scrub-1024-bit.png)
+
+**Pacing:** in the simulator about 20 bits wear out per run, roughly one every two minutes, 197 over the whole game. A player who refreshes them within 10 seconds keeps the old pace: first Overflow at 49 min, ending at 6 h 14 min. A player who never refreshes falls behind, and from the fourth run, with a 32-bit Boot ROM, bad bits arrive faster than they scrub themselves and hold the Count for hours. That's intended, so the pacing check prints this player but no longer fails on it. A player who comes back can still clear the pile by repairing or scrubbing the bits one by one.
+
+**Browser check:** with worn bits flickering, the register redraws every frame, so I counted WebGL buffers in a localhost copy. The register now draws only rectangles and one texture, and adds none. The 16 to 24 buffers a second that remain come from elsewhere on the screen, most likely the buttons whose text changes ten times a second, and every one is deleted again. With a tutorial card open, nothing is created at all, because the game is paused.
+
 ## 19 Oct 2026 · 1.3.3: frozen overnight
 
 **What you found:** left running overnight on 1.3.2, the game had frozen, with the music still playing.

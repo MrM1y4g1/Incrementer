@@ -11,6 +11,8 @@ var state: GameState = GameState.new()
 var content: Content
 ## Simulation speed. Only the debug panel changes it.
 var speed := 1.0
+## True while the tutorial explains something: nothing is produced, nothing wears and play time stands still.
+var paused := false
 
 var _accumulator := 0.0
 var _check_timer := 0.0
@@ -18,9 +20,13 @@ var _check_timer := 0.0
 
 func _ready() -> void:
 	content = ContentDB.content
+	_seed_new_game()
 
 
 func _process(delta: float) -> void:
+	if paused:
+		_accumulator = 0.0
+		return
 	var dt := delta * speed
 	_accumulator += dt
 	if _accumulator > MAX_LIVE_GAP:
@@ -90,6 +96,16 @@ func buy_firmware(id: StringName) -> bool:
 	return true
 
 
+## Refreshes one worn bit before it goes bad.
+func refresh_bit(bit: int) -> bool:
+	return Economy.refresh(state, bit)
+
+
+## Refreshes every worn bit. Returns how many there were.
+func refresh_all() -> int:
+	return Economy.refresh_all(state)
+
+
 func repair_fault() -> bool:
 	return Economy.repair(state)
 
@@ -117,3 +133,11 @@ func check_achievements() -> void:
 func replace_state(new_state: GameState) -> void:
 	state = new_state
 	state.effects_dirty = true
+	_seed_new_game()
+
+
+## A new game's first run gets a random seed, so every player's first run wears different bits. Later runs
+## are seeded by the Overflow, and tests and the simulator use GameState directly, with seed 0.
+func _seed_new_game() -> void:
+	if state.run_seed == 0 and state.overflows == 0:
+		state.run_seed = randi()

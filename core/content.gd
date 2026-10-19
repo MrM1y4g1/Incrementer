@@ -116,7 +116,7 @@ func validate() -> PackedStringArray:
 		if node.effect == FirmwareDef.Effect.SCRUB_SECONDS and node.value <= 0.0:
 			errors.append("Firmware %s needs a positive scrub time" % node.id)
 		if node.effect == FirmwareDef.Effect.FAULT_RATE and (node.value <= 0.0 or node.value > 1.0):
-			errors.append("Firmware %s must scale bad bits by more than 0 and at most 1" % node.id)
+			errors.append("Firmware %s must scale how often bits wear by more than 0 and at most 1" % node.id)
 	return errors
 
 

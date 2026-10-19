@@ -65,7 +65,7 @@ func _init() -> void:
 	_row(grid, "Autosave", _autosave)
 
 	_faults = CheckButton.new()
-	_faults.text = "Storage goes bad after the first Overflow"
+	_faults.text = "Bits wear out and go bad"
 	_faults.toggled.connect(func(on: bool) -> void: Game.set_faults_on(on))
 	_row(grid, "Bad bits", _faults)
 

@@ -9,8 +9,9 @@ extends RefCounted
 ##   3  M3: adds the run fields, Carry, Firmware, Overflows, run history, autobuyer switches and the ending
 ##   4  1.1.0: adds the run log (events)
 ##   5  1.2.0: adds bad bits (run seed, bad bits, blocked time, the switch and the counts)
+##   6  1.4.0: adds worn bits (wearing, wear due, wear started, refreshed count) and the tutorial
 
-const VERSION := 5
+const VERSION := 6
 
 
 static func encode(state: GameState, saved_at: float) -> String:
@@ -56,6 +57,8 @@ static func migrate(payload: Dictionary, from_version: int) -> Dictionary:
 			payload = _v3_to_v4(payload)
 		elif version == 4:
 			payload = _v4_to_v5(payload)
+		elif version == 5:
+			payload = _v5_to_v6(payload)
 		version += 1
 	payload["version"] = VERSION
 	return payload
@@ -117,5 +120,23 @@ static func _v4_to_v5(payload: Dictionary) -> Dictionary:
 	state["faults_repaired"] = 0
 	state["faults_scrubbed"] = 0
 	state["faults_waited"] = 0
+	payload["state"] = state
+	return payload
+
+
+static func _v5_to_v6(payload: Dictionary) -> Dictionary:
+	var state_data: Variant = payload.get("state")
+	if typeof(state_data) != TYPE_DICTIONARY:
+		return payload
+	var state: Dictionary = state_data
+	# Nothing is wearing yet; the first worn bit is scheduled once the game runs.
+	state["wearing"] = []
+	state["wear_due"] = -1.0
+	state["wear_started"] = 0
+	state["faults_refreshed"] = 0
+	# Someone who has already played knows how to count, buy and upgrade. Worn bits are new to everyone,
+	# so their tutorial steps still show.
+	var played := int(state.get("total_clicks", 0)) > 0 or float(state.get("total_produced", 0.0)) > 0.0 or int(state.get("overflows", 0)) > 0
+	state["tutorial"] = Tutorial.BASICS.duplicate() if played else []
 	payload["state"] = state
 	return payload

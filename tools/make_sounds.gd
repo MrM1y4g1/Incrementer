@@ -24,18 +24,25 @@ const MUSIC_LEAD := [
 const SAW_TABLE_SIZE := 2048
 
 
+## Add --only=<names> (comma-separated) after `--` to rebuild just those sounds.
 func _init() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT_DIR))
-	_save("click", _click())
-	_save("buy", _buy())
-	_save("upgrade", _arpeggio([523.25, 659.25, 783.99], 0.07, 0.35))
-	_save("overclock", _arpeggio([880.0, 1046.5, 1318.5], 0.045, 0.3))
-	_save("widen", _widen())
-	_save("achievement", _bell())
-	_save("overflow", _overflow())
-	_save("fault", _fault())
-	_save("music", _music())
-	print("Wrote sounds to %s" % OUT_DIR)
+	var only := PackedStringArray()
+	for arg: String in OS.get_cmdline_user_args():
+		if arg.begins_with("--only="):
+			only = arg.get_slice("=", 1).split(",")
+	var makers := {
+		"click": _click, "buy": _buy,
+		"upgrade": _arpeggio.bind([523.25, 659.25, 783.99], 0.07, 0.35),
+		"overclock": _arpeggio.bind([880.0, 1046.5, 1318.5], 0.045, 0.3),
+		"widen": _widen, "achievement": _bell, "overflow": _overflow, "fault": _fault,
+		"wear": _wear, "refresh": _refresh, "music": _music,
+	}
+	for sound_name: String in makers:
+		if only.is_empty() or only.has(sound_name):
+			var maker: Callable = makers[sound_name]
+			_save(sound_name, maker.call())
+			print("Wrote %s/%s.wav" % [OUT_DIR, sound_name])
 	quit()
 
 
@@ -354,6 +361,33 @@ func _fault() -> PackedFloat32Array:
 			var t := float(i - start) / RATE
 			var wave := clampf(sin(TAU * freq * t) * 2.5, -1.0, 1.0)
 			out[i] += wave * exp(-t * 16.0) * 0.2
+	return out
+
+
+## A bit starting to wear: a soft tone that wavers and sags a semitone, like a cell losing its charge.
+func _wear() -> PackedFloat32Array:
+	var length := 0.45
+	var out := _buffer(length)
+	var phase := 0.0
+	for i: int in out.size():
+		var t := float(i) / RATE
+		var progress := t / length
+		phase += TAU * lerpf(523.25, 493.88, progress) / RATE
+		var tremolo := 0.75 + 0.25 * sin(TAU * 14.0 * t)
+		var envelope := minf(t / 0.02, 1.0) * pow(1.0 - progress, 1.5)
+		out[i] = (sin(phase) + 0.3 * sin(phase * 3.0) / 3.0) * tremolo * envelope * 0.2
+	return out
+
+
+## A worn bit refreshed: a quick bright sweep upwards.
+func _refresh() -> PackedFloat32Array:
+	var length := 0.14
+	var out := _buffer(length)
+	var phase := 0.0
+	for i: int in out.size():
+		var t := float(i) / RATE
+		phase += TAU * lerpf(700.0, 1500.0, minf(t / 0.08, 1.0)) / RATE
+		out[i] = (sin(phase) + 0.2 * sin(phase * 2.0)) * minf(t / 0.004, 1.0) * exp(-t * 22.0) * 0.3
 	return out
 
 

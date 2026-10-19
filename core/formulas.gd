@@ -32,10 +32,16 @@ const CARRY_BONUS_POWER := 7.0
 const CARRY_RIPPLE_SECONDS := 2400.0
 ## Multipliers stay below this so they never become INF, because INF × 0 would be NaN.
 const MAX_MULTIPLIER := 1e300
-## Bad bits: the machine's storage going bad. From the second run on, each widening can map in bad bits
-## among the new bits, on average this many more per Overflow so far, up to FAULT_RATE_MAX.
-const FAULT_RATE_PER_OVERFLOW := 0.5
-const FAULT_RATE_MAX := 3.0
+## Worn bits: the machine's storage wearing out. Once the register reaches WEAR_FROM_BITS, a random bit
+## anywhere in it starts to wear about every WEAR_INTERVAL seconds. An older machine wears faster: each
+## Overflow so far adds WEAR_PER_OVERFLOW to the rate, up to WEAR_RATE_MAX times the first run's.
+## A worn bit goes bad WEAR_SECONDS after it starts, unless the player refreshes it first.
+## Until 1.3.3, bad bits only appeared among the new bits of a widening, from the second run on.
+const WEAR_FROM_BITS := 16
+const WEAR_INTERVAL := 150.0
+const WEAR_PER_OVERFLOW := 0.25
+const WEAR_RATE_MAX := 3.0
+const WEAR_SECONDS := 20.0
 ## A bad bit holding the Count scrubs itself after this many seconds, unless Firmware is faster.
 const FAULT_SCRUB_SECONDS := 60.0
 ## Repairing a bad bit costs this share of the bit's value: the Count drops by about one bit.
@@ -131,9 +137,11 @@ static func milestone_multiplier(bought: int, step: int = MILESTONE_EVERY) -> fl
 	return pow(2.0, floor(float(bought) / maxi(1, step)))
 
 
-## Bad bits each widening maps in, on average, after `overflows` Overflows.
-static func fault_rate(overflows: int) -> float:
-	return minf(FAULT_RATE_MAX, FAULT_RATE_PER_OVERFLOW * overflows)
+## The average seconds between bits starting to wear, after `overflows` Overflows. `rate_multiplier` comes
+## from Firmware: 0.5 wears half as often.
+static func wear_interval(overflows: int, rate_multiplier: float = 1.0) -> float:
+	var rate := minf(WEAR_RATE_MAX, 1.0 + WEAR_PER_OVERFLOW * overflows) * maxf(0.01, rate_multiplier)
+	return WEAR_INTERVAL / rate
 
 
 ## The largest Count that leaves `bit` unset: 2^bit − 1, or from 53 bits on, where 2^bit − 1 would round

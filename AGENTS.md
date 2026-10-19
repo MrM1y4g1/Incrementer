@@ -45,24 +45,25 @@ Run from the repository root. `G=.tools/godot/Godot_v4.7.2-stable_win64_console.
 | Screenshot | `$G --path . --resolution 1280x720 -- --no-save --autoplay=<seconds> --capture=docs/screenshots/<name>.png` |
 | Open the editor | `.tools/godot/Godot_v4.7.2-stable_win64.exe --path . --editor` |
 
-Dev flags go after `--`: `--no-save` (never read or write the save or settings), `--mute` (no sound; captures and headless runs are silent anyway), `--autoplay=<seconds>` (fast-forward the scripted player before the first frame), `--open=<views>` (comma-separated: `title`, `upgrades`, `stats`, `firmware`, `settings`, `save`, `start-over`, `overflow`, `overflow-fx`, `ending`, `debug`, `toast`, `fault` (a bad bit just above the Count, filled up to it), `scrub`), `--capture=<png>` (save a screenshot after a few frames, then quit). `--autoplay` and `--capture` skip the start screen unless `--open=title` asks for it. Captures need a real window, so they don't work with `--headless`. In debug builds, **F3** toggles the debug panel.
+Dev flags go after `--`: `--no-save` (never read or write the save or settings), `--mute` (no sound; captures and headless runs are silent anyway), `--autoplay=<seconds>` (fast-forward the scripted player before the first frame), `--open=<views>` (comma-separated: `title`, `upgrades`, `stats`, `firmware`, `settings`, `save`, `start-over`, `overflow`, `overflow-fx`, `ending`, `debug`, `toast`, `fault` (a bad bit just above the Count, filled up to it), `scrub`, `wear` (three bits wearing, at different stages), `tutorial-<step>` (that tutorial step: `count`, `incrementer`, `upgrade`, `wear` or `bad-bit`)), `--capture=<png>` (save a screenshot after a few frames, then quit). `--autoplay` and `--capture` skip the start screen and the tutorial unless `--open` asks for them. Captures need a real window, so they don't work with `--headless`. In debug builds, **F3** toggles the debug panel.
 
 ## Layout
 
 ```
 autoload/          EventBus (signals), Settings (preferences in user://settings.cfg), ContentDB (loads and checks data),
                    Game (state + 20 Hz tick), SaveManager (JSON saves), Audio (sound effects and music)
-core/              Pure logic: Formulas, Economy, GameState, Content, Achievements, SaveCodec, RunLog, ParityGrid, NumberFormat, AutoPlayer
+core/              Pure logic: Formulas, Economy, GameState, Content, Achievements, SaveCodec, RunLog, ParityGrid, Tutorial,
+                   NumberFormat, AutoPlayer
 data/defs/         Resource classes: LayerDef, UpgradeDef, AchievementDef, FirmwareDef
 data/layers/       One .tres per Software layer: most balance numbers live here
 data/upgrades/     One .tres per upgrade
 data/achievements/ One .tres per achievement
 data/firmware/     One .tres per Firmware node (column = position in the tree)
-ui/                main.tscn + main.gd (screen built in code), TitleScreen, SchematicView, RegisterDisplay, LayerRow,
-                   UpgradeCard, TierIcon, FramePanel, FxLayer, Stats/Firmware/Settings/Ending/Save/Scrub/Debug panels,
-                   Palette, Fonts, Shapes, ThemeFactory
+ui/                main.tscn + main.gd (screen built in code), TitleScreen, TutorialOverlay, TutorialHint, SchematicView,
+                   RegisterDisplay, LayerRow, UpgradeCard, TierIcon, FramePanel, FxLayer,
+                   Stats/Firmware/Settings/Ending/Save/Scrub/Debug panels, Palette, Fonts, Shapes, ThemeFactory
 tests/             run_tests.gd (runner), lib/ (TestCase, Fixtures), test_*.gd
-tools/             sim.gd (balance simulator), make_sounds.gd (synthesises assets/audio)
+tools/             sim.gd (balance simulator), make_sounds.gd (synthesises assets/audio; `--only=<names>` rebuilds some)
 assets/            fonts/ (OFL fonts and licences), audio/ (generated WAVs)
 default_bus_layout.tres  The audio buses (Master, Music, SFX). Define buses here, never in code: the Web build only
                    plays through buses that exist at startup. Long or looping sounds, like the music, use
@@ -78,9 +79,9 @@ tmp/               The repo owner's local scratch, such as style references. Git
 ## Rules that keep the architecture honest
 
 1. **`Economy` is the only code that changes the numbers.** Live play, catch-up after a long frame, the autoplayer, the simulator and the tests all call the same functions. Never add Count or units anywhere else.
-2. **The game only runs while it's open.** There is no offline progress: a save carries on from where it was saved. Long gaps while the game is open (a background tab, a minimised window) are caught up with `Economy.catch_up`.
+2. **The game only runs while it's open.** There is no offline progress: a save carries on from where it was saved. Long gaps while the game is open (a background tab, a minimised window) are caught up with `Economy.catch_up`. The only pause is the tutorial: while one of its cards is open, `Game.paused` stops the tick, so nothing is produced and nothing wears.
 3. **`core/` never touches autoloads, nodes or files** (except `ContentLoader`, which only reads `res://`). That keeps it testable headless.
-4. **Content is data.** New layers, upgrades or Firmware nodes are `.tres` files with a Resource class in `data/defs/`. Balance changes are data changes; afterwards run `tools/sim.gd -- --no-save --until=ending --check`. It fails if the first Overflow leaves 40–60 min, the longest first-hour wait passes 90 s, the second run gets back to 64 bits in under 3 min, the ending leaves 5–8 h, a player who waits out every bad bit takes over 8 h, or any of the faster Overflow strategies in `FASTER_PLAYERS` reaches the ending in under 5 h. The last check exists because 1.0.2 passed the others while a player who Overflowed whenever a run slowed down finished in under 2 h. CI runs the same check.
+4. **Content is data.** New layers, upgrades or Firmware nodes are `.tres` files with a Resource class in `data/defs/`. Balance changes are data changes; afterwards run `tools/sim.gd -- --no-save --until=ending --check`. It fails if the first Overflow leaves 40–60 min, the longest first-hour wait passes 90 s, the second run gets back to 64 bits in under 3 min, the ending leaves 5–8 h, or any of the faster Overflow strategies in `FASTER_PLAYERS` reaches the ending in under 5 h. The last check exists because 1.0.2 passed the others while a player who Overflowed whenever a run slowed down finished in under 2 h. A player who never refreshes worn bits is printed but not checked: bad bits are meant to pile up when nobody is watching. CI runs the same check.
 5. **Saves are versioned.** Any change to `GameState.to_dict()` bumps `SaveCodec.VERSION` and adds a migration step plus a test that loads the old format.
 6. **The run log stays on the player's machine.** `GameState.events` records what the player did and when, by play time (see `RunLog`). The game never sends it anywhere; players can copy it from Save data and choose to share it. New player actions get a `state.record(...)` in `Economy`, so the simulator logs them too.
 7. **The UI only asks and listens.** It calls `Game.click()`, `Game.buy()`, `Game.widen()`, reads `Game.state`, and listens to `EventBus`. It refreshes at 10 Hz, not every frame.
@@ -113,7 +114,7 @@ The repo owner follows progress through screenshots. After any visible change:
 
 ## Art direction
 
-Clean-lined sci-fi: thin glowing lines on a deep blue-black background, panels with corner brackets (`FramePanel`). Colours have fixed meanings (see `ui/palette.gd`): cyan = producing now, violet = survives an Overflow, amber = needs attention, magenta = the Overflow only, red (`Palette.FAULT`) = damage, which means bad bits only. Software tiers are polygons where tier *n* has *n* + 2 sides (`Shapes.polygon`). Fonts come from `Fonts`: `body()` for labels, `heading()` for spaced capitals, `mono()` for numbers, `readout()` for big numbers. Everything is drawn in code; there are no sprites. Every effect must respect `Settings.reduced_motion`. Anything redrawn every frame may use only rects, textures and text: in the browser, each polygon, antialiased line or circle drawn gets a new WebGL buffer, and a schematic redrawn every frame leaked about 2 MB a second until the tab froze (fixed in 1.3.2). Redraw shapes only when what they show changes. New content only comes when the repo owner asks for it (the start screen in 1.1.0, bad bits in 1.2.0); otherwise only balance numbers change.
+Clean-lined sci-fi: thin glowing lines on a deep blue-black background, panels with corner brackets (`FramePanel`). Colours have fixed meanings (see `ui/palette.gd`): cyan = producing now, violet = survives an Overflow, amber = needs attention (the tutorial, and worn bits, which redden as they wear), magenta = the Overflow only, red (`Palette.FAULT`) = damage, which means bad bits only. Software tiers are polygons where tier *n* has *n* + 2 sides (`Shapes.polygon`). Fonts come from `Fonts`: `body()` for labels, `heading()` for spaced capitals, `mono()` for numbers, `readout()` for big numbers. Everything is drawn in code; there are no sprites. Every effect must respect `Settings.reduced_motion`. Anything redrawn every frame may use only rects, textures and text: in the browser, each polygon, antialiased line or circle drawn gets a new WebGL buffer, and a schematic redrawn every frame leaked about 2 MB a second until the tab froze (fixed in 1.3.2). Redraw shapes only when what they show changes. New content only comes when the repo owner asks for it (the start screen in 1.1.0, bad bits in 1.2.0, the tutorial and worn bits in 1.4.0); otherwise only balance numbers change.
 
 ## Releases
 

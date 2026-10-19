@@ -6,7 +6,7 @@
 script = ExtResource("1_def")
 id = &"spare_rows"
 display_name = "Spare rows"
-description = "Widening maps in half as many bad bits"
+description = "Bits wear out half as often"
 effect = 12
 value = 0.5
 layer_tier = 0

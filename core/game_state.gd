@@ -21,12 +21,19 @@ var layer_amount := PackedFloat64Array()
 var layer_bought := PackedInt64Array()
 ## Ids of upgrades bought this run.
 var upgrades: Array[StringName] = []
-## Seeds this run's bad bits and their puzzles, so a run always meets the same ones.
+## Seeds this run's worn bits and the bad bits' puzzles, so a run always meets the same ones.
 var run_seed := 0
-## Bad bits ahead of the Count this run, lowest first. The Count can't pass the lowest one.
+## Bits that have gone bad this run, anywhere in the register, lowest first. The Count can't grow past the
+## lowest one: it stops below it, or stops growing at all if it's already higher.
 var bad_bits: Array[int] = []
 ## Seconds the Count has been held by the lowest bad bit. At scrub_seconds the bit scrubs itself.
 var blocked_time := 0.0
+## Bits wearing out this run: bit → seconds it has been wearing. At Formulas.WEAR_SECONDS it goes bad.
+var wearing: Dictionary[int, float] = {}
+## Seconds until the next bit starts to wear, or -1 before the first is scheduled.
+var wear_due := -1.0
+## Bits that have started to wear this run. Each one's bit and timing come from the seed and this number.
+var wear_started := 0
 
 # --- The whole save ---
 var peak_count := 0.0
@@ -45,12 +52,16 @@ var runs: Array[Dictionary] = []
 var autobuy := {"low": true, "high": true, "clock": true, "widen": true}
 var ended := false
 var ended_time := 0.0
-## Whether widening maps in bad bits. A switch in Settings.
+## Whether bits wear out and go bad. A switch in Settings.
 var faults_on := true
 ## Bad bits cleared over the whole save: repaired with Count, scrubbed with the puzzle, or waited out.
 var faults_repaired := 0
 var faults_scrubbed := 0
 var faults_waited := 0
+## Worn bits the player refreshed before they went bad, over the whole save.
+var faults_refreshed := 0
+## Tutorial steps already shown (see Tutorial).
+var tutorial: Array[String] = []
 ## The run log, oldest first: [play seconds, kind, detail]. See RunLog for the kinds.
 var events: Array = []
 
@@ -102,6 +113,9 @@ func to_dict() -> Dictionary:
 		"run_seed": run_seed,
 		"bad_bits": bad_bits.duplicate(),
 		"blocked_time": blocked_time,
+		"wearing": _wearing_pairs(),
+		"wear_due": wear_due,
+		"wear_started": wear_started,
 		"peak_count": peak_count,
 		"total_produced": total_produced,
 		"total_clicks": total_clicks,
@@ -119,6 +133,8 @@ func to_dict() -> Dictionary:
 		"faults_repaired": faults_repaired,
 		"faults_scrubbed": faults_scrubbed,
 		"faults_waited": faults_waited,
+		"faults_refreshed": faults_refreshed,
+		"tutorial": tutorial.duplicate(),
 		"events": events.duplicate(true),
 	}
 
@@ -148,15 +164,33 @@ static func from_dict(data: Dictionary) -> GameState:
 	s.faults_repaired = maxi(0, int(data.get("faults_repaired", 0)))
 	s.faults_scrubbed = maxi(0, int(data.get("faults_scrubbed", 0)))
 	s.faults_waited = maxi(0, int(data.get("faults_waited", 0)))
+	s.faults_refreshed = maxi(0, int(data.get("faults_refreshed", 0)))
+	s.wear_due = maxf(-1.0, float(data.get("wear_due", -1.0)))
+	s.wear_started = maxi(0, int(data.get("wear_started", 0)))
 	var saved_bad_bits: Variant = data.get("bad_bits", [])
 	if saved_bad_bits is Array:
 		var list: Array = saved_bad_bits
 		for item: Variant in list:
-			# Only bits the register holds and the Count hasn't passed.
+			# Only bits the register holds.
 			var bit := int(item)
-			if bit >= 0 and bit < s.register_bits and s.count <= Formulas.below_bit(bit) and not s.bad_bits.has(bit):
+			if bit >= 0 and bit < s.register_bits and not s.bad_bits.has(bit):
 				s.bad_bits.append(bit)
 		s.bad_bits.sort()
+	var saved_wearing: Variant = data.get("wearing", [])
+	if saved_wearing is Array:
+		var list: Array = saved_wearing
+		for item: Variant in list:
+			# [bit, seconds worn], for bits the register holds that haven't gone bad.
+			if item is Array and (item as Array).size() == 2:
+				var bit := int(item[0])
+				if bit >= 0 and bit < s.register_bits and not s.bad_bits.has(bit):
+					s.wearing[bit] = clampf(float(item[1]), 0.0, Formulas.WEAR_SECONDS)
+	var saved_tutorial: Variant = data.get("tutorial", [])
+	if saved_tutorial is Array:
+		var list: Array = saved_tutorial
+		for item: Variant in list:
+			if not s.tutorial.has(str(item)):
+				s.tutorial.append(str(item))
 
 	var amounts: Variant = data.get("layer_amount", [])
 	if amounts is Array:
@@ -200,6 +234,16 @@ static func from_dict(data: Dictionary) -> GameState:
 		for key: String in s.autobuy:
 			s.autobuy[key] = bool(saved.get(key, true))
 	return s
+
+
+## The worn bits as [bit, seconds] pairs, lowest bit first. JSON would turn a Dictionary's keys into text.
+func _wearing_pairs() -> Array:
+	var pairs: Array = []
+	var bits := wearing.keys()
+	bits.sort()
+	for bit: int in bits:
+		pairs.append([bit, wearing[bit]])
+	return pairs
 
 
 static func _names(ids: Array[StringName]) -> Array:

@@ -6,7 +6,7 @@ extends Node
 ## play through Web Audio, which only knows the buses that exist at startup. Buses added in code left the
 ## Web build silent.
 
-const SOUND_NAMES: PackedStringArray = ["click", "buy", "upgrade", "overclock", "widen", "achievement", "overflow", "fault"]
+const SOUND_NAMES: PackedStringArray = ["click", "buy", "upgrade", "overclock", "widen", "achievement", "overflow", "fault", "wear", "refresh"]
 ## The same sound won't restart faster than this, so rapid purchases don't turn into a buzz.
 const MIN_GAP_SECONDS := 0.045
 const PLAYER_COUNT := 8

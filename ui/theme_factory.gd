@@ -37,12 +37,18 @@ static func build() -> Theme:
 	theme.set_stylebox("normal", "WarningButton", _box(Color(Palette.AMBER, 0.08), Color(Palette.AMBER, 0.6), 1, 3, 10.0))
 	theme.set_stylebox("hover", "WarningButton", _box(Color(Palette.AMBER, 0.16), Color(Palette.AMBER, 0.9), 1, 3, 10.0))
 	theme.set_stylebox("pressed", "WarningButton", _box(Color(Palette.AMBER, 0.3), Palette.AMBER, 1, 3, 10.0))
+	# The tutorial asks for attention too.
+	theme.set_type_variation("TutorialPanel", "PanelContainer")
+	theme.set_stylebox("panel", "TutorialPanel", _box(Palette.PANEL, Palette.AMBER, 1, 6, 20.0))
+	# Refreshing a worn bit: amber, like the bit while it wears, and small enough for the register's status line.
+	theme.set_type_variation("WearButton", "Button")
+	theme.set_stylebox("normal", "WearButton", _box(Color(Palette.AMBER, 0.1), Color(Palette.AMBER, 0.65), 1, 3, 6.0))
+	theme.set_stylebox("hover", "WearButton", _box(Color(Palette.AMBER, 0.2), Color(Palette.AMBER, 0.95), 1, 3, 6.0))
+	theme.set_stylebox("pressed", "WearButton", _box(Color(Palette.AMBER, 0.32), Palette.AMBER, 1, 3, 6.0))
 
 	# Bad bits: red, the colour of damage.
 	theme.set_type_variation("FaultPanel", "PanelContainer")
 	theme.set_stylebox("panel", "FaultPanel", _box(Palette.PANEL, Palette.FAULT, 1, 6, 20.0))
-	theme.set_type_variation("FaultToast", "PanelContainer")
-	theme.set_stylebox("panel", "FaultToast", _box(Palette.PANEL, Palette.FAULT, 1, 4, 12.0))
 	theme.set_type_variation("FaultButton", "Button")
 	theme.set_stylebox("normal", "FaultButton", _box(Color(Palette.FAULT, 0.1), Color(Palette.FAULT, 0.65), 1, 3, 6.0))
 	theme.set_stylebox("hover", "FaultButton", _box(Color(Palette.FAULT, 0.2), Color(Palette.FAULT, 0.95), 1, 3, 6.0))

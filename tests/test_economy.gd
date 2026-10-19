@@ -110,12 +110,15 @@ func test_overclock_spends_and_speeds_everything_up() -> void:
 
 func test_catch_up_matches_live_play() -> void:
 	var content := Fixtures.content()
+	# Bad bits off: these catch-up tests are about production alone.
 	var caught_up := GameState.new()
 	caught_up.register_bits = 64
 	caught_up.layer_amount[1] = 1.0
+	caught_up.faults_on = false
 	var live := GameState.new()
 	live.register_bits = 64
 	live.layer_amount[1] = 1.0
+	live.faults_on = false
 	Economy.catch_up(caught_up, content, 3600.0)
 	for _tick: int in 72000:
 		Economy.advance(live, content, 0.05)
@@ -127,6 +130,7 @@ func test_catch_up_is_capped() -> void:
 	var s := GameState.new()
 	s.register_bits = 32
 	s.layer_amount[0] = 1.0
+	s.faults_on = false
 	check_near(Economy.catch_up(s, content, 30.0 * 3600.0), Economy.MAX_CATCH_UP_SECONDS, 1e-9)
 
 
