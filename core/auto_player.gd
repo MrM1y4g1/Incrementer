@@ -11,17 +11,14 @@ const SPEND_SHARE_WHILE_SAVING := 0.1
 ## How the scripted player clears a bad bit that holds the Count: pay Count, solve the puzzle at once,
 ## or wait for it to scrub itself.
 enum Fix { REPAIR, SCRUB, WAIT }
-## Seconds the scripted player takes to notice a worn bit and refresh it. INF never refreshes.
-const REFRESH_AFTER := 10.0
 
 
-static func play(state: GameState, content: Content, seconds: float, step: float = 0.25, clicks_per_second: float = 4.0, fix: Fix = Fix.REPAIR, refresh_after: float = REFRESH_AFTER) -> void:
+## At the default 4 clicks a second the click charge stays empty (Formulas.CHARGE_DRAIN), so pacing checks
+## don't depend on it; the simulator plays a faster clicker separately.
+static func play(state: GameState, content: Content, seconds: float, step: float = 0.25, clicks_per_second: float = 4.0, fix: Fix = Fix.REPAIR) -> void:
 	var elapsed := 0.0
 	var clicks := 0.0
 	while elapsed < seconds:
-		for bit: int in state.wearing.keys():
-			if state.wearing[bit] >= refresh_after:
-				Economy.refresh(state, bit)
 		# Several bad bits can sit under the Count at once; clear them lowest first.
 		while Economy.is_blocked(state):
 			if fix == Fix.REPAIR and Economy.repair(state):

@@ -9,7 +9,7 @@ func _blocked_at(bit: int, register_bits: int = 16) -> GameState:
 	return s
 
 
-## A register of this width after `seconds` of play in one-second steps, with nobody refreshing.
+## A register of this width after `seconds` of play in one-second steps.
 func _worn(register_bits: int, seconds: float, overflows: int = 0, run_seed: int = 1) -> GameState:
 	var s := GameState.new()
 	s.register_bits = register_bits
@@ -211,20 +211,15 @@ func test_is_bit_set() -> void:
 	check(Economy.is_bit_set(Formulas.MAX_FLOAT, 1023), "the top bit of the largest float")
 
 
-func test_refreshing_saves_a_worn_bit() -> void:
-	var content := Fixtures.content()
-	var s := GameState.new()
-	s.register_bits = 16
-	s.wear_due = 10000.0
-	s.wearing[5] = 0.0
-	s.wearing[9] = 0.0
-	Economy.advance(s, content, Formulas.WEAR_SECONDS - 1.0)
-	check(Economy.refresh(s, 5), "refreshed in time")
-	check(not Economy.refresh(s, 6), "a healthy bit has nothing to refresh")
-	check_eq(Economy.refresh_all(s), 1, "the other worn bit")
-	Economy.advance(s, content, 10.0)
-	check(s.bad_bits.is_empty() and s.wearing.is_empty(), "nothing went bad")
-	check_eq(s.faults_refreshed, 2)
+func test_nothing_stops_a_worn_bit_going_bad() -> void:
+	var s := _worn(32, 1500.0)
+	var bad := 0
+	for event: Array in s.events:
+		if event[1] == "bad bit":
+			bad += 1
+	check(bad > 5, "%d went bad" % bad)
+	check(bad + s.wearing.size() <= s.wear_started, "every bit that went bad wore out first")
+	check(s.wearing.size() <= 1, "worn bits don't linger: %d" % s.wearing.size())
 
 
 func test_older_machines_wear_faster() -> void:
@@ -295,11 +290,11 @@ func test_a_bad_bit_scrubs_itself_after_a_minute_of_blocking() -> void:
 func test_bits_keep_wearing_while_a_bad_bit_holds_the_count() -> void:
 	var content := Fixtures.content()
 	var s := _blocked_at(10)
-	s.wear_due = 5.0
+	s.wear_due = 2.0
 	s.wearing[2] = 0.0
-	Economy.advance(s, content, 10.0)
+	Economy.advance(s, content, 3.0)
 	check_eq(s.wear_started, 1, "a new worn bit while held")
-	check_eq(s.wearing[2], 10.0, "and the one already wearing carries on")
+	check_eq(s.wearing[2], 3.0, "and the one already wearing carries on")
 
 
 func test_a_lower_bad_bit_starts_its_own_wait() -> void:
@@ -370,9 +365,8 @@ func test_bad_bits_survive_a_save_and_load() -> void:
 	s.blocked_time = 20.0
 	s.faults_on = false
 	s.faults_repaired = 3
-	s.faults_refreshed = 9
 	s.run_seed = 77
-	s.wearing[3] = 12.5
+	s.wearing[3] = 2.5
 	s.wear_due = 12.25
 	s.wear_started = 6
 	var t: GameState = SaveCodec.decode(SaveCodec.encode(s, 1.0))["state"]
@@ -380,18 +374,17 @@ func test_bad_bits_survive_a_save_and_load() -> void:
 	check_eq(t.blocked_time, 20.0)
 	check(not t.faults_on, "the switch is kept")
 	check_eq(t.faults_repaired, 3)
-	check_eq(t.faults_refreshed, 9)
 	check_eq(t.run_seed, 77)
-	check_eq(t.wearing, {3: 12.5})
+	check_eq(t.wearing, {3: 2.5})
 	check_eq(t.wear_due, 12.25)
 	check_eq(t.wear_started, 6)
 
 
 func test_loading_drops_impossible_bad_bits() -> void:
 	var t := GameState.from_dict({"register_bits": 16, "count": 2000.0, "bad_bits": [5, 12, 40, 12, -1],
-		"wearing": [[2, 10.0], [5, 3.0], [99, 1.0], [7, 1e9], "junk"]})
+		"wearing": [[2, 3.5], [5, 3.0], [99, 1.0], [7, 1e9], "junk"]})
 	check_eq(t.bad_bits, [5, 12], "only bits the register holds, under the Count or above it")
-	check_eq(t.wearing, {2: 10.0, 7: Formulas.WEAR_SECONDS}, "worn bits the register holds that haven't gone bad")
+	check_eq(t.wearing, {2: 3.5, 7: Formulas.WEAR_SECONDS}, "worn bits the register holds that haven't gone bad")
 
 
 func test_version_4_saves_load_with_bad_bits_on() -> void:
@@ -433,20 +426,6 @@ func test_nothing_wears_after_the_ending() -> void:
 	for _second: int in 3000:
 		Economy.advance(s, content, 1.0)
 	check(s.wearing.is_empty() and s.bad_bits.is_empty(), "the finished machine rests")
-
-
-func test_the_autoplayer_refreshes_worn_bits() -> void:
-	var content := Fixtures.content()
-	var s := GameState.new()
-	s.register_bits = 32
-	AutoPlayer.play(s, content, 3000.0, 1.0, 0.0)
-	check(s.faults_refreshed > 5, "refreshed %d" % s.faults_refreshed)
-	check(s.bad_bits.is_empty(), "none went bad")
-	var idle := GameState.new()
-	idle.register_bits = 32
-	AutoPlayer.play(idle, content, 3000.0, 1.0, 0.0, AutoPlayer.Fix.WAIT, INF)
-	check_eq(idle.faults_refreshed, 0, "an idle player refreshes nothing")
-	check(idle.bad_bits.size() + idle.faults_waited > 5, "and lets its worn bits go bad")
 
 
 func test_the_autoplayer_repairs_a_bad_bit() -> void:

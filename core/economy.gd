@@ -17,8 +17,8 @@ const AUTOBUY_SPEND_SHARE := 0.1
 # --- Production -----------------------------------------------------------------
 
 ## Runs production for `seconds`. Every layer adds to the layer below it; layer 1 adds to the Count.
-## All layers use their amounts from the start of the step. Bits wear out as the time passes, and a bad
-## bit holding the Count scrubs itself.
+## All layers use their amounts from the start of the step. Bits wear out as the time passes, a bad bit
+## holding the Count scrubs itself, and the click charge drains.
 static func advance(state: GameState, content: Content, seconds: float) -> void:
 	if seconds <= 0.0:
 		return
@@ -30,6 +30,7 @@ static func advance(state: GameState, content: Content, seconds: float) -> void:
 		add_count(state, start[0] * layer_rate(state, content, 0) * seconds)
 	_wear(state, content, seconds)
 	_wait_out_fault(state, seconds)
+	_drain_charge(state, seconds)
 
 
 ## Runs `seconds` of production in fixed steps, with autobuyers, up to MAX_CATCH_UP_SECONDS. For long gaps
@@ -178,14 +179,61 @@ static func _multiply(multipliers: PackedFloat64Array, tier: int, value: float) 
 
 # --- Clicking -------------------------------------------------------------------
 
+## What the next click adds, with the click charge's bonus.
 static func click_value(state: GameState, content: Content) -> float:
 	refresh_effects(state, content)
-	return minf(Formulas.MAX_FLOAT, CLICK_VALUE * state.click_multiplier + state.click_rate_share * count_per_second(state, content))
+	var value := CLICK_VALUE * state.click_multiplier + state.click_rate_share * count_per_second(state, content)
+	return minf(Formulas.MAX_FLOAT, value * (1.0 + charge_bonus(state)))
 
 
-static func click(state: GameState, content: Content) -> void:
+## The share the click charge adds to every click: nothing when it's empty, CHARGE_BONUS_MAX when it's full.
+static func charge_bonus(state: GameState) -> float:
+	return Formulas.CHARGE_BONUS_MAX * state.charge
+
+
+## Adds a click to the Count, then charges the battery. Returns what the click was worth.
+static func click(state: GameState, content: Content) -> float:
+	var value := click_value(state, content)
 	state.total_clicks += 1
-	add_count(state, click_value(state, content))
+	add_count(state, value)
+	state.click_rate += 1.0 / Formulas.CLICK_RATE_SECONDS
+	if state.burnout > 0.0:
+		return value
+	state.charge = minf(1.0, state.charge + 1.0 / Formulas.CHARGE_CLICKS)
+	if state.charge >= 1.0 and not state.ultra:
+		state.ultra = true
+		state.ultras += 1
+		state.record("ultra", snappedf(state.click_rate, 0.1))
+	return value
+
+
+## Drains the charge, lets the click rate settle, and catches clicking that stays too fast for a person.
+## Runs on play time, after the clicks of a frame, so the rate it sees is an average and not one burst.
+static func _drain_charge(state: GameState, seconds: float) -> void:
+	state.click_rate *= exp(-seconds / Formulas.CLICK_RATE_SECONDS)
+	state.best_click_rate = maxf(state.best_click_rate, state.click_rate)
+	state.charge = maxf(0.0, state.charge - Formulas.CHARGE_DRAIN / Formulas.CHARGE_CLICKS * seconds)
+	if state.ultra and state.charge < Formulas.ULTRA_EXIT:
+		state.ultra = false
+	if state.burnout > 0.0:
+		state.burnout = maxf(0.0, state.burnout - seconds)
+		return
+	if state.click_rate < Formulas.ICARUS_RATE:
+		state.icarus_time = 0.0
+		return
+	state.icarus_time += seconds
+	if state.icarus_time >= Formulas.ICARUS_HOLD:
+		_fly_too_close(state)
+
+
+## Caught macro clicking: the charge melts and stays empty for ICARUS_SECONDS. Clicks still count.
+static func _fly_too_close(state: GameState) -> void:
+	state.icarus_falls += 1
+	state.record("icarus", snappedf(state.click_rate, 0.1))
+	state.charge = 0.0
+	state.ultra = false
+	state.icarus_time = 0.0
+	state.burnout = Formulas.ICARUS_SECONDS
 
 
 # --- Layers ---------------------------------------------------------------------
@@ -432,29 +480,11 @@ static func wear_level(state: GameState, bit: int) -> float:
 	return clampf(seconds / Formulas.WEAR_SECONDS, 0.0, 1.0)
 
 
-## Rewrites a worn bit before it goes bad. Free: it only takes noticing.
-static func refresh(state: GameState, bit: int) -> bool:
-	if not state.wearing.has(bit):
-		return false
-	state.record("refresh", {"bit": bit, "after": snappedf(state.wearing[bit], 0.1)})
-	state.wearing.erase(bit)
-	state.faults_refreshed += 1
-	return true
-
-
-## Refreshes every worn bit. Returns how many there were.
-static func refresh_all(state: GameState) -> int:
-	var refreshed := 0
-	for bit: int in state.wearing.keys():
-		if refresh(state, bit):
-			refreshed += 1
-	return refreshed
-
-
 ## Ages the worn bits, turns those that have worn for WEAR_SECONDS into bad bits, and starts new ones on
 ## schedule. Nothing wears in a register narrower than WEAR_FROM_BITS, after the ending, or with the switch off.
-## Bits keep wearing while a bad bit holds the Count, so a player who looks away comes back to a pile of bad
-## bits. That is intended (the repo owner's call in 1.4.0): bad bits are the game's enemy.
+## Nothing stops a worn bit going bad (the repo owner's call in 1.5.0), and bits keep wearing while a bad bit
+## holds the Count, so a player who looks away comes back to a pile of bad bits. That is intended (1.4.0):
+## bad bits are the game's enemy.
 static func _wear(state: GameState, content: Content, seconds: float) -> void:
 	if not state.faults_on or state.ended or state.register_bits < Formulas.WEAR_FROM_BITS:
 		return

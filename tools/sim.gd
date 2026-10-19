@@ -22,12 +22,15 @@ const TARGETS := {
 
 ## Players who Overflow sooner than the AutoPlayer, on top of its own rule. In 1.0.2 the AutoPlayer took
 ## 6 h 23 min to the ending, but a player who Overflowed whenever a run slowed down finished in under 2 hours.
-## They refresh worn bits like the AutoPlayer and solve every bad bit's puzzle at once. With --until=ending
-## --check, none of these may reach the ending in under 5 hours.
+## They solve every bad bit's puzzle at once. With --until=ending --check, none of these may reach the ending
+## in under 5 hours.
 ##   ripple:<f>  once the run is f ripples old, if the Overflow would at least double the Carry earned
 ##   ratio:<r>   whenever the Overflow would pay at least r times the Carry earned
 ##   stall:<b>   once the peak grows less than b bits in a minute, if the Overflow would double the Carry
 const FASTER_PLAYERS: Array[String] = ["ripple:0.5", "ripple:0.75", "ratio:16", "stall:1", "stall:3"]
+## A player, or an autoclicker, that clicks this fast all game keeps the click charge full without being
+## caught (Formulas.ICARUS_RATE). It plays like the AutoPlayer otherwise, and must also take 5 hours or more.
+const FAST_CLICKS := 15.0
 ## The fastest any player may reach the ending, and how long the faster players are followed.
 const ENDING_FLOOR := 5.0 * 3600.0
 const ENDING_CEILING := 8.0 * 3600.0
@@ -98,8 +101,8 @@ func _init() -> void:
 		print("second run back at 64 bits after %s (target 3 minutes or more)" % NumberFormat.duration(replay))
 	print("final: %s Count at %d bits, %s per second, clock level %d" % [
 		NumberFormat.amount(state.count), state.register_bits, NumberFormat.rate(Economy.count_per_second(state, content)), state.clock_level])
-	print("worn bits refreshed: %d; bad bits cleared: %d repaired, %d scrubbed, %d waited out" % [
-		state.faults_refreshed, state.faults_repaired, state.faults_scrubbed, state.faults_waited])
+	print("bad bits cleared: %d repaired, %d scrubbed, %d waited out; Count lost to bad bits: %s" % [
+		state.faults_repaired, state.faults_scrubbed, state.faults_waited, NumberFormat.amount(state.count_lost)])
 	print("upgrades %d of %d, achievements %d of %d, Firmware %d of %d, Carry %s (%s earned)" % [
 		state.upgrades.size(), content.upgrades.size(), state.achievements.size(), content.achievements.size(),
 		state.firmware.size(), content.firmware.size(), NumberFormat.amount(state.carry), NumberFormat.amount(state.total_carry)])
@@ -122,12 +125,16 @@ func _init() -> void:
 			problems.append("V1 ending at %s, outside 5–8 hours" % (NumberFormat.duration(ending) if ending > 0.0 else "never"))
 		# Not checked: bad bits are meant to pile up for a player who stops paying attention (1.4.0). In a
 		# narrow register they come faster than they scrub themselves, so this player can stall for hours.
-		var idle := _ending_with(content, "none:0", AutoPlayer.Fix.WAIT, INF)
-		print("\na player who never refreshes and waits out every bad bit: %s (not checked)" % (NumberFormat.duration(idle) if idle > 0.0 else "over %s" % NumberFormat.duration(ENDING_CEILING)))
+		var idle := _ending_with(content, "none:0", AutoPlayer.Fix.WAIT)
+		print("\na player who waits out every bad bit: %s (not checked)" % _duration(idle))
+		var clicker := _ending_with(content, "none:0", AutoPlayer.Fix.REPAIR, FAST_CLICKS)
+		print("a player who clicks %d times a second, with the click charge full: %s (target 5 hours or more)" % [FAST_CLICKS, _duration(clicker)])
+		if clicker > 0.0 and clicker < ENDING_FLOOR:
+			problems.append("a player clicking %d times a second reaches the ending at %s, under 5 hours" % [FAST_CLICKS, NumberFormat.duration(clicker)])
 		print("faster players (target 5 hours or more to the ending):")
 		for rule: String in FASTER_PLAYERS:
 			var seconds_to_end := _ending_with(content, rule)
-			print("  %-12s %s" % [rule, NumberFormat.duration(seconds_to_end) if seconds_to_end > 0.0 else "over %s" % NumberFormat.duration(ENDING_CEILING)])
+			print("  %-12s %s" % [rule, _duration(seconds_to_end)])
 			if seconds_to_end > 0.0 and seconds_to_end < ENDING_FLOOR:
 				problems.append("a player using %s reaches the ending at %s, under 5 hours" % [rule, NumberFormat.duration(seconds_to_end)])
 	for problem: String in problems:
@@ -138,7 +145,7 @@ func _init() -> void:
 
 ## Plays to the ending like the AutoPlayer, but also Overflows whenever the rule (see FASTER_PLAYERS) says so.
 ## Returns the seconds it took, or -1 if it takes longer than ENDING_CEILING.
-func _ending_with(content: Content, rule: String, fix: AutoPlayer.Fix = AutoPlayer.Fix.SCRUB, refresh_after: float = AutoPlayer.REFRESH_AFTER) -> float:
+func _ending_with(content: Content, rule: String, fix: AutoPlayer.Fix = AutoPlayer.Fix.SCRUB, clicks_per_second: float = 4.0) -> float:
 	var kind := rule.get_slice(":", 0)
 	var value := rule.get_slice(":", 1).to_float()
 	var state := GameState.new()
@@ -147,7 +154,7 @@ func _ending_with(content: Content, rule: String, fix: AutoPlayer.Fix = AutoPlay
 	var peaks := PackedFloat64Array()
 	var seconds := 0.0
 	while seconds < ENDING_CEILING:
-		AutoPlayer.play(state, content, 1.0, 0.25, 4.0, fix, refresh_after)
+		AutoPlayer.play(state, content, 1.0, 0.25, clicks_per_second, fix)
 		seconds += 1.0
 		if state.ended:
 			return seconds
@@ -171,6 +178,11 @@ func _ending_with(content: Content, rule: String, fix: AutoPlayer.Fix = AutoPlay
 			Economy.overflow(state, content)
 			AutoPlayer.buy_firmware(state, content)
 	return -1.0
+
+## A time to the ending from _ending_with.
+func _duration(seconds: float) -> String:
+	return NumberFormat.duration(seconds) if seconds > 0.0 else "over %s" % NumberFormat.duration(ENDING_CEILING)
+
 
 ## Writes the run log as CSV. A relative path is relative to the project folder.
 func _write_log(state: GameState, path: String) -> void:

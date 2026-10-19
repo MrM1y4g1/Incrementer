@@ -47,8 +47,9 @@ func _process(delta: float) -> void:
 			EventBus.game_ended.emit()
 
 
-func click() -> void:
-	Economy.click(state, content)
+## Returns what the click was worth.
+func click() -> float:
+	return Economy.click(state, content)
 
 
 func buy(index: int, mode: int) -> int:
@@ -94,16 +95,6 @@ func buy_firmware(id: StringName) -> bool:
 		return false
 	EventBus.firmware_bought.emit(id)
 	return true
-
-
-## Refreshes one worn bit before it goes bad.
-func refresh_bit(bit: int) -> bool:
-	return Economy.refresh(state, bit)
-
-
-## Refreshes every worn bit. Returns how many there were.
-func refresh_all() -> int:
-	return Economy.refresh_all(state)
 
 
 func repair_fault() -> bool:

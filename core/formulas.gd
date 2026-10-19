@@ -35,17 +35,35 @@ const MAX_MULTIPLIER := 1e300
 ## Worn bits: the machine's storage wearing out. Once the register reaches WEAR_FROM_BITS, a random bit
 ## anywhere in it starts to wear about every WEAR_INTERVAL seconds. An older machine wears faster: each
 ## Overflow so far adds WEAR_PER_OVERFLOW to the rate, up to WEAR_RATE_MAX times the first run's.
-## A worn bit goes bad WEAR_SECONDS after it starts, unless the player refreshes it first.
-## Until 1.3.3, bad bits only appeared among the new bits of a widening, from the second run on.
+## A worn bit goes bad WEAR_SECONDS after it starts, and nothing stops it: the amber and red are a warning.
+## Until 1.3.3, bad bits only appeared among the new bits of a widening, from the second run on. In 1.4.0 a
+## worn bit took 20 seconds and the player could refresh it in time; the repo owner took that out in 1.5.0.
 const WEAR_FROM_BITS := 16
 const WEAR_INTERVAL := 150.0
 const WEAR_PER_OVERFLOW := 0.25
 const WEAR_RATE_MAX := 3.0
-const WEAR_SECONDS := 20.0
+const WEAR_SECONDS := 5.0
 ## A bad bit holding the Count scrubs itself after this many seconds, unless Firmware is faster.
 const FAULT_SCRUB_SECONDS := 60.0
 ## Repairing a bad bit costs this share of the bit's value: the Count drops by about one bit.
 const FAULT_REPAIR_SHARE := 0.5
+## The click charge, a battery that rewards clicking fast. Each click adds 1/CHARGE_CLICKS of a full charge
+## and it drains CHARGE_DRAIN/CHARGE_CLICKS a second, so clicking faster than CHARGE_DRAIN times a second
+## fills it: in 10 seconds at 10 clicks a second, in a minute at 5. Every click is worth up to
+## CHARGE_BONUS_MAX more, in proportion to the charge. A full charge is ULTRA, which lasts until the charge
+## drops below ULTRA_EXIT, so a click that comes a moment late doesn't end it.
+const CHARGE_CLICKS := 60.0
+const CHARGE_DRAIN := 4.0
+const CHARGE_BONUS_MAX := 2.0
+const ULTRA_EXIT := 0.9
+## The click rate is an average over about CLICK_RATE_SECONDS. Held at ICARUS_RATE clicks a second or more
+## for ICARUS_HOLD seconds, which a person can't do but a macro or a held-down key can, the player flies too
+## close to the sun: the charge melts and can't build again for ICARUS_SECONDS. The hold means one slow frame
+## that delivers a burst of clicks at once is never mistaken for a macro.
+const CLICK_RATE_SECONDS := 1.0
+const ICARUS_RATE := 20.0
+const ICARUS_HOLD := 1.5
+const ICARUS_SECONDS := 10.0
 
 
 ## Price of the next single unit.

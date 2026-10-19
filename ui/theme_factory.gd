@@ -41,10 +41,6 @@ static func build() -> Theme:
 	theme.set_type_variation("TutorialPanel", "PanelContainer")
 	theme.set_stylebox("panel", "TutorialPanel", _box(Palette.PANEL, Palette.AMBER, 1, 6, 20.0))
 	# Refreshing a worn bit: amber, like the bit while it wears, and small enough for the register's status line.
-	theme.set_type_variation("WearButton", "Button")
-	theme.set_stylebox("normal", "WearButton", _box(Color(Palette.AMBER, 0.1), Color(Palette.AMBER, 0.65), 1, 3, 6.0))
-	theme.set_stylebox("hover", "WearButton", _box(Color(Palette.AMBER, 0.2), Color(Palette.AMBER, 0.95), 1, 3, 6.0))
-	theme.set_stylebox("pressed", "WearButton", _box(Color(Palette.AMBER, 0.32), Palette.AMBER, 1, 3, 6.0))
 
 	# Bad bits: red, the colour of damage.
 	theme.set_type_variation("FaultPanel", "PanelContainer")

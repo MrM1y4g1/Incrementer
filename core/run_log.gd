@@ -16,13 +16,15 @@ extends RefCounted
 ##   achievement  an achievement; detail is its id
 ##   autobuy      an autobuyer switch; detail is "<switch> on" or "<switch> off"
 ##   setting      a switch that changes play; detail is "bad bits on" or "bad bits off"
-##   refresh      a worn bit refreshed before it went bad; detail is {"bit": bit, "after": seconds worn}
 ##   bad bit      a worn bit went bad; detail is {"bit": bit, "lost": Count lost because the bit held a 1}
 ##   blocked      the lowest bad bit started holding the Count; detail is the bit
 ##   repair       a bad bit repaired with Count; detail is the bit
 ##   scrub        a bad bit scrubbed by solving its puzzle; detail is the bit
 ##   waited       a bad bit scrubbed itself; detail is the bit
 ##   tutorial     a tutorial step shown; detail is the step, or "skipped"
+##   ultra        the click charge filled; detail is the click rate, in clicks a second
+##   icarus       caught clicking faster than a person can; detail is the click rate
+##   refresh      (1.4.x only) a worn bit refreshed in time; detail is {"bit": bit, "after": seconds worn}
 ##   ending       the V1 ending
 ## Clock levels aren't logged: there are over a hundred a run, and they say little about pacing.
 

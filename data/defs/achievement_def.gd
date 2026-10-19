@@ -18,6 +18,8 @@ enum Condition {
 	FAULTS_SCRUBBED,
 	## Bad bits cleared in any way.
 	FAULTS_CLEARED,
+	## Times the player was caught clicking faster than a person can (see Formulas.ICARUS_RATE).
+	ICARUS_FALLS,
 }
 
 @export var id: StringName = &""

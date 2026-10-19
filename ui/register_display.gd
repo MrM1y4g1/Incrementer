@@ -51,30 +51,6 @@ func show_wear(levels: Dictionary[int, float]) -> void:
 	_wear = levels
 
 
-## The worn bit at or next to a point in this control, or -1. Generous, because the cells of a wide
-## register are only a few pixels tall.
-func worn_bit_near(point: Vector2) -> int:
-	_layout()
-	var reach := Vector2(maxf(8.0, _cell.x), maxf(8.0, _cell.y))
-	var nearest := -1
-	var nearest_distance := INF
-	for bit: int in _wear:
-		var rect := _cell_rect(_bits - 1 - bit)
-		if not rect.grow_individual(reach.x, reach.y, reach.x, reach.y).has_point(point):
-			continue
-		var distance := rect.get_center().distance_to(point)
-		if distance < nearest_distance:
-			nearest = bit
-			nearest_distance = distance
-	return nearest
-
-
-## Where a bit's cell is, in this control.
-func bit_rect(bit: int) -> Rect2:
-	_layout()
-	return _cell_rect(_bits - 1 - bit)
-
-
 func _process(_delta: float) -> void:
 	# The blocking bit pulses and worn bits flicker, so they need drawing between the screen's 10 Hz refreshes.
 	if (_blocked or not _wear.is_empty()) and not Settings.reduced_motion:

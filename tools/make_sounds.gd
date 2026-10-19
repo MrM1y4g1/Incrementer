@@ -36,7 +36,7 @@ func _init() -> void:
 		"upgrade": _arpeggio.bind([523.25, 659.25, 783.99], 0.07, 0.35),
 		"overclock": _arpeggio.bind([880.0, 1046.5, 1318.5], 0.045, 0.3),
 		"widen": _widen, "achievement": _bell, "overflow": _overflow, "fault": _fault,
-		"wear": _wear, "refresh": _refresh, "music": _music,
+		"wear": _wear, "ultra": _ultra, "icarus": _icarus, "music": _music,
 	}
 	for sound_name: String in makers:
 		if only.is_empty() or only.has(sound_name):
@@ -379,15 +379,42 @@ func _wear() -> PackedFloat32Array:
 	return out
 
 
-## A worn bit refreshed: a quick bright sweep upwards.
-func _refresh() -> PackedFloat32Array:
-	var length := 0.14
-	var out := _buffer(length)
+## The click charge full: a sweep that climbs like a capacitor charging, then a bright chord.
+func _ultra() -> PackedFloat32Array:
+	var sweep := 0.32
+	var out := _buffer(0.95)
 	var phase := 0.0
-	for i: int in out.size():
+	for i: int in int(sweep * RATE):
 		var t := float(i) / RATE
-		phase += TAU * lerpf(700.0, 1500.0, minf(t / 0.08, 1.0)) / RATE
-		out[i] = (sin(phase) + 0.2 * sin(phase * 2.0)) * minf(t / 0.004, 1.0) * exp(-t * 22.0) * 0.3
+		var progress := t / sweep
+		phase += TAU * lerpf(220.0, 1320.0, progress * progress) / RATE
+		var wave := sin(phase) + 0.35 * sin(phase * 2.0) + 0.2 * sin(phase * 3.0)
+		out[i] = wave * minf(t / 0.01, 1.0) * (0.4 + 0.6 * progress) * 0.16
+	var start := int(sweep * RATE)
+	for freq: float in [523.25, 659.25, 783.99, 1046.5]:
+		for i: int in range(start, out.size()):
+			var t := float(i - start) / RATE
+			out[i] += (sin(TAU * freq * t) + 0.25 * sin(TAU * freq * 2.0 * t)) * minf(t / 0.005, 1.0) * exp(-t * 6.0) * 0.09
+	return out
+
+
+## Caught macro clicking: a whistle that falls from the sun, then a dull thud.
+func _icarus() -> PackedFloat32Array:
+	var fall := 0.9
+	var out := _buffer(1.25)
+	var phase := 0.0
+	for i: int in int(fall * RATE):
+		var t := float(i) / RATE
+		var progress := t / fall
+		var freq := lerpf(1600.0, 180.0, pow(progress, 0.7)) * (1.0 + 0.012 * sin(TAU * 7.0 * t))
+		phase += TAU * freq / RATE
+		out[i] = (sin(phase) + 0.15 * sin(phase * 2.0)) * minf(t / 0.03, 1.0) * (1.0 - 0.5 * progress) * 0.22
+	var start := int(fall * RATE)
+	phase = 0.0
+	for i: int in range(start, out.size()):
+		var t := float(i - start) / RATE
+		phase += TAU * lerpf(90.0, 45.0, minf(t / 0.2, 1.0)) / RATE
+		out[i] += sin(phase) * minf(t / 0.003, 1.0) * exp(-t * 14.0) * 0.45
 	return out
 
 

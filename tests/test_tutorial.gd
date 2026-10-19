@@ -35,8 +35,8 @@ func test_steps_come_when_what_they_explain_appears() -> void:
 	s.wearing[7] = 0.0
 	check_eq(Tutorial.next_step(s, content), "wear")
 	Tutorial.mark_shown(s, "wear")
+	check(Tutorial.is_done("wear", s), "nothing to do: the card only warns")
 	s.wearing.clear()
-	check(Tutorial.is_done("wear", s), "refreshed")
 	s.bad_bits.append(7)
 	check_eq(Tutorial.next_step(s, content), "bad bit")
 	Tutorial.mark_shown(s, "bad bit")

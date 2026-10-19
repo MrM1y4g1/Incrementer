@@ -3,7 +3,8 @@ extends Control
 ## top, the schematic of the machine in the middle with the actions beneath it, parts and upgrades on
 ## the right, and a status bar along the bottom.
 ##
-## Click the register or press Space to increment. F3 shows the debug panel in debug builds.
+## Press Increment or Space to increment. Clicking fast builds the click charge; holding Space down repeats
+## faster than a person can click, which the charge takes for a macro. F3 shows the debug panel in debug builds.
 ## Dev flags, passed after `--` on the command line:
 ##   --no-save              do not read or write the save or settings (handled by SaveManager, Settings)
 ##   --mute                 no sound (also implied by --capture)
@@ -12,6 +13,7 @@ extends Control
 ##                          title, upgrades, stats, firmware, settings, save, start-over, overflow, ending, debug, toast,
 ##                          fault (puts a bad bit just above the Count and fills up to it), scrub,
 ##                          wear (starts three bits wearing, at different stages),
+##                          charge, ultra, icarus (the click charge part-way, full, or melted by macro clicking),
 ##                          tutorial-<step> (shows that tutorial step: count, incrementer, upgrade, wear or bad-bit)
 ##                          (--autoplay and --capture skip the start screen and the tutorial unless --open asks for them)
 ##   --capture=<png path>   save a screenshot after a few frames, then quit
@@ -30,7 +32,6 @@ var _register_panel: FramePanel
 var _register: RegisterDisplay
 var _register_label: Label
 var _bits_label: Label
-var _refresh_button: Button
 var _repair_button: Button
 var _scrub_button: Button
 var _count_label: Label
@@ -57,6 +58,12 @@ var _fx: FxLayer
 var _debug_panel: DebugPanel
 var _title: TitleScreen
 var _skip_title := false
+var _background: ColorRect
+var _glow: TextureRect
+var _charge: ChargeDisplay
+# ULTRA charges and Icarus falls so far, to notice new ones. -1 until the first refresh.
+var _ultras_seen := -1
+var _falls_seen := -1
 # Bad bits cleared so far, bad bits now, bits worn this run and whether a bad bit was holding the Count,
 # to notice changes between refreshes. -1 until the first refresh.
 var _faults_cleared := -1
@@ -131,6 +138,17 @@ func _place_screen() -> void:
 	offset_top = -SCREEN_SIZE.y / 2.0
 	offset_right = SCREEN_SIZE.x / 2.0
 	offset_bottom = SCREEN_SIZE.y / 2.0
+	for control: Control in [_background, _glow]:
+		if control != null:
+			_cover_window(control)
+
+
+## Stretches a control over the whole window, which can be larger than the screen.
+func _cover_window(control: Control) -> void:
+	var to_local := get_global_transform().affine_inverse()
+	var window := get_viewport_rect()
+	control.position = to_local * window.position
+	control.size = to_local.basis_xform(window.size)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -155,10 +173,11 @@ func _unhandled_input(event: InputEvent) -> void:
 # --- Layout -------------------------------------------------------------------
 
 func _build() -> void:
-	var background := ColorRect.new()
-	background.color = Palette.VOID
-	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(background)
+	# The click charge turns it red, all the way to the window's edges.
+	_background = ColorRect.new()
+	_background.color = Palette.VOID
+	_background.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_background)
 
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -172,6 +191,20 @@ func _build() -> void:
 	root.add_child(_build_top())
 	root.add_child(_build_middle())
 	root.add_child(_build_status_bar())
+
+	# Over the panels, so the red reaches into them from the edges, and under everything that opens over them.
+	_glow = TextureRect.new()
+	_glow.texture = ChargeDisplay.make_glow()
+	_glow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_glow.stretch_mode = TextureRect.STRETCH_SCALE
+	_glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_glow.visible = false
+	add_child(_glow)
+	_charge = ChargeDisplay.new()
+	_charge.background = _background
+	_charge.glow = _glow
+	add_child(_charge)
+	_place_screen()
 
 	_fx = FxLayer.new()
 	add_child(_fx)
@@ -195,12 +228,7 @@ func _build_top() -> Control:
 	_register_panel = register_panel
 	register_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	register_panel.custom_minimum_size = Vector2(0, 156)
-	register_panel.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	register_panel.tooltip_text = "Click the register, or press Space, to increment. Click a worn bit to refresh it."
-	register_panel.gui_input.connect(func(event: InputEvent) -> void:
-		var click := event as InputEventMouseButton
-		if click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT:
-			_on_register_clicked())
+	register_panel.tooltip_text = "The Count in binary: each lit cell is a 1. A worn bit glows amber, then red, and goes bad %d seconds later." % roundi(Formulas.WEAR_SECONDS)
 	top.add_child(register_panel)
 	var register_box := VBoxContainer.new()
 	register_box.add_theme_constant_override("separation", 8)
@@ -224,10 +252,6 @@ func _build_top() -> Control:
 	_bits_label.clip_text = true
 	_bits_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	status_row.add_child(_bits_label)
-	_refresh_button = _fault_button(_on_refresh_all)
-	_refresh_button.theme_type_variation = &"WearButton"
-	_refresh_button.text = "REFRESH"
-	status_row.add_child(_refresh_button)
 	_repair_button = _fault_button(_on_repair)
 	status_row.add_child(_repair_button)
 	_scrub_button = _fault_button(_open_scrub)
@@ -623,7 +647,7 @@ func _refresh() -> void:
 	elif most_worn >= 0:
 		var left := NumberFormat.duration((1.0 - wear[most_worn]) * Formulas.WEAR_SECONDS)
 		if wear.size() == 1:
-			_bits_label.text = "Bit %d is wearing out: it goes bad in %s. Click it or press Refresh." % [most_worn, left]
+			_bits_label.text = "Bit %d is wearing out: it goes bad in %s." % [most_worn, left]
 		else:
 			_bits_label.text = "%d bits are wearing out. Bit %d goes bad in %s." % [wear.size(), most_worn, left]
 		_bits_label.add_theme_color_override("font_color", Palette.AMBER)
@@ -635,8 +659,6 @@ func _refresh() -> void:
 		if fault >= 0:
 			_bits_label.text += "  ·  bad bit ahead at %d" % fault
 		_bits_label.add_theme_color_override("font_color", Palette.MUTED)
-	_refresh_button.visible = most_worn >= 0
-	_refresh_button.text = "REFRESH" if wear.size() <= 1 else "REFRESH %d" % wear.size()
 	_repair_button.visible = blocked
 	_scrub_button.visible = blocked
 	if blocked:
@@ -645,6 +667,10 @@ func _refresh() -> void:
 	_notice_faults(state, blocked)
 
 	_increment_button.text = "INCREMENT\n+%s" % NumberFormat.amount(Economy.click_value(state, content))
+	_charge.position = _local_rect(_schematic).position
+	_charge.size = _schematic.size
+	_charge.show_charge(state)
+	_notice_charge(state)
 	_refresh_widen(state, content)
 	_refresh_clock(state, cap)
 	_refresh_overflow(state, content)
@@ -732,6 +758,7 @@ func _wide_bus_name(bits: int, content: Content) -> String:
 func _apply_settings() -> void:
 	_fx.reduced_motion = Settings.reduced_motion
 	_schematic.reduced_motion = Settings.reduced_motion
+	_charge.reduced_motion = Settings.reduced_motion
 	_refresh()
 
 
@@ -790,27 +817,17 @@ func _notice_faults(state: GameState, blocked: bool) -> void:
 	_was_blocked = blocked
 
 
-## Clicking a worn bit, or right next to one, refreshes it. Anywhere else on the register increments.
-func _on_register_clicked() -> void:
-	var bit := _register.worn_bit_near(_register.get_local_mouse_position())
-	if bit < 0:
-		_on_increment()
-		return
-	if Game.refresh_bit(bit):
-		_on_refreshed(_register.get_global_transform() * _register.bit_rect(bit).get_center(), 1)
-
-
-func _on_refresh_all() -> void:
-	var refreshed := Game.refresh_all()
-	if refreshed > 0:
-		var rect := _refresh_button.get_global_rect()
-		_on_refreshed(Vector2(rect.get_center().x, rect.position.y), refreshed)
-
-
-func _on_refreshed(at: Vector2, bits: int) -> void:
-	Audio.play("refresh")
-	_fx.float_text(at, "REFRESHED" if bits == 1 else "%d REFRESHED" % bits, Palette.CYAN)
-	_refresh()
+## A sound and a flash when the click charge fills, and a white flash, like the sun, when the player is
+## caught macro clicking.
+func _notice_charge(state: GameState) -> void:
+	if _ultras_seen >= 0 and state.ultras > _ultras_seen:
+		Audio.play("ultra", 0.0)
+		_fx.flash(Color(Palette.HEAT, 0.3), 0.5)
+	if _falls_seen >= 0 and state.icarus_falls > _falls_seen:
+		Audio.play("icarus", 0.0)
+		_fx.flash(Color(Palette.ICE, 0.7), 1.2)
+	_ultras_seen = state.ultras
+	_falls_seen = state.icarus_falls
 
 
 func _on_repair() -> void:
@@ -990,7 +1007,7 @@ func _tutorial_target(step: String) -> Control:
 func _tutorial_text(step: String, state: GameState, content: Content) -> Array[String]:
 	match step:
 		"count":
-			return ["Count up", "You are a counter inside a machine. Press INCREMENT, or Space, to add 1 to the Count.\n\nThe register at the top holds the Count in binary: each lit cell is a 1. An %d-bit register holds up to %s. Widen it to count higher." % [
+			return ["Count up", "You are a counter inside a machine. Press INCREMENT, or Space, to add 1 to the Count. Click fast to charge it up: the faster you click, the more each click is worth.\n\nThe register at the top holds the Count in binary: each lit cell is a 1. An %d-bit register holds up to %s. Widen it to count higher." % [
 				state.register_bits, NumberFormat.amount(Formulas.register_cap(state.register_bits))]]
 		"incrementer":
 			return ["Buy an Incrementer", "You can afford an Incrementer. Each one adds %s to the Count every second by itself, so the Count keeps rising while you do other things.\n\nParts cost more each time you buy one, and every %d of the same part doubles its output." % [
@@ -1005,7 +1022,7 @@ func _tutorial_text(step: String, state: GameState, content: Content) -> Array[S
 			var bit := -1
 			for worn: int in state.wearing:
 				bit = worn
-			return ["A bit is wearing out", "The machine's storage is old. Bit %d has started to wear: it glows amber, turns red, and %d seconds later it goes bad. If it holds a 1 then, the Count loses what that bit was worth.\n\nClick the bit, or press REFRESH under the register, to rewrite it in time. Bits wear out anywhere in the register, and more often as the machine ages." % [
+			return ["A bit is wearing out", "The machine's storage is old. Bit %d has started to wear: it glows amber, turns red, and %d seconds later it goes bad. If it holds a 1 then, the Count loses what that bit was worth.\n\nThere's no stopping it. Bits wear out anywhere in the register, and more often as the machine ages." % [
 				bit, roundi(Formulas.WEAR_SECONDS)]]
 		"bad bit":
 			var fault := Economy.next_fault(state)
@@ -1022,7 +1039,7 @@ func _tutorial_text(step: String, state: GameState, content: Content) -> Array[S
 				if amount > 0.0:
 					lost = " It held a 1, so the Count lost %s." % NumberFormat.amount(amount)
 				break
-			return ["A bit has gone bad", "Bit %d went bad before it was refreshed.%s The Count can't grow past a bad bit: it stops just below it, or if it's already higher, it stops growing.\n\nREPAIR the bit with Count, SCRUB it for free by solving a parity puzzle, or wait: %d seconds after it starts holding the Count, it scrubs itself." % [
+			return ["A bit has gone bad", "Bit %d went bad.%s The Count can't grow past a bad bit: it stops just below it, or if it's already higher, it stops growing.\n\nREPAIR the bit with Count, SCRUB it for free by solving a parity puzzle, or wait: %d seconds after it starts holding the Count, it scrubs itself." % [
 				fault, lost, roundi(state.scrub_seconds)]]
 	return ["", ""]
 
@@ -1037,11 +1054,13 @@ func _local_rect(control: Control) -> Rect2:
 # --- Input --------------------------------------------------------------------
 
 func _on_increment() -> void:
-	var gain := Economy.click_value(Game.state, Game.content)
-	Game.click()
-	Audio.play("click")
+	var charge := Game.state.charge
+	var gain := Game.click()
+	# The click rises in pitch as the charge builds, and its number heats up from cyan to red.
+	Audio.play("click", 0.05, 1.0 + 0.6 * charge)
+	var color := Palette.CYAN if charge < ChargeDisplay.SHOW_FROM else Palette.AMBER.lerp(Palette.HEAT, charge)
 	var rect := _increment_button.get_global_rect()
-	_fx.float_text(Vector2(rect.get_center().x + randf_range(-30.0, 30.0), rect.position.y - 8.0), "+%s" % NumberFormat.amount(gain), Palette.CYAN)
+	_fx.float_text(Vector2(rect.get_center().x + randf_range(-30.0, 30.0), rect.position.y - 8.0), "+%s" % NumberFormat.amount(gain), color)
 	if not Settings.reduced_motion:
 		_increment_button.pivot_offset = _increment_button.size / 2.0
 		_increment_button.scale = Vector2(0.95, 0.95)
@@ -1130,6 +1149,14 @@ func _open_view(view: String) -> void:
 			_refresh()
 		"scrub":
 			_open_scrub()
+		"charge", "ultra", "icarus":
+			# For screenshots: the click charge part-way, full, or melted after macro clicking.
+			var state := Game.state
+			state.click_rate = 10.0
+			state.charge = {"charge": 0.55, "ultra": 1.0, "icarus": 0.0}[view]
+			state.ultra = view == "ultra"
+			state.burnout = Formulas.ICARUS_SECONDS if view == "icarus" else 0.0
+			_refresh()
 		"wear":
 			# For screenshots: three bits wearing, just started, halfway and nearly bad.
 			var state := Game.state
@@ -1142,7 +1169,7 @@ func _open_view(view: String) -> void:
 			var step := view.trim_prefix("tutorial-").replace("-", " ")
 			var middle := floori(Game.state.register_bits / 2.0)
 			if step == "wear" and Game.state.wearing.is_empty():
-				Game.state.wearing[middle] = 12.0
+				Game.state.wearing[middle] = Formulas.WEAR_SECONDS * 0.6
 			if step == "bad bit" and Game.state.bad_bits.is_empty():
 				Game.state.bad_bits.append(middle)
 			_refresh()
@@ -1174,7 +1201,8 @@ func _open_view(view: String) -> void:
 
 
 func _capture() -> void:
-	for _frame: int in 12:
+	# Long enough for pop-ups and the click charge's message to finish appearing.
+	for _frame: int in 24:
 		await get_tree().process_frame
 	await RenderingServer.frame_post_draw
 	var image := get_viewport().get_texture().get_image()

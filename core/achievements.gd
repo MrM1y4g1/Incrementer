@@ -33,6 +33,8 @@ static func is_met(state: GameState, achievement: AchievementDef) -> bool:
 			return state.faults_scrubbed >= int(achievement.threshold)
 		AchievementDef.Condition.FAULTS_CLEARED:
 			return state.faults_repaired + state.faults_scrubbed + state.faults_waited >= int(achievement.threshold)
+		AchievementDef.Condition.ICARUS_FALLS:
+			return state.icarus_falls >= int(achievement.threshold)
 	return false
 
 

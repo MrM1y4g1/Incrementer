@@ -6,7 +6,7 @@ extends Node
 ## play through Web Audio, which only knows the buses that exist at startup. Buses added in code left the
 ## Web build silent.
 
-const SOUND_NAMES: PackedStringArray = ["click", "buy", "upgrade", "overclock", "widen", "achievement", "overflow", "fault", "wear", "refresh"]
+const SOUND_NAMES: PackedStringArray = ["click", "buy", "upgrade", "overclock", "widen", "achievement", "overflow", "fault", "wear", "ultra", "icarus"]
 ## The same sound won't restart faster than this, so rapid purchases don't turn into a buzz.
 const MIN_GAP_SECONDS := 0.045
 const PLAYER_COUNT := 8
@@ -57,8 +57,9 @@ func _ready() -> void:
 		_music.play()
 
 
-## Plays a sound effect, with a little random pitch so repeats don't sound mechanical.
-func play(sound_name: String, pitch_jitter: float = 0.05) -> void:
+## Plays a sound effect, with a little random pitch so repeats don't sound mechanical. The pitch shifts it,
+## like the click rising with the click charge.
+func play(sound_name: String, pitch_jitter: float = 0.05, pitch: float = 1.0) -> void:
 	if _muted or not _sounds.has(sound_name):
 		return
 	var now := Time.get_ticks_msec() / 1000.0
@@ -67,7 +68,7 @@ func play(sound_name: String, pitch_jitter: float = 0.05) -> void:
 	_last_played[sound_name] = now
 	var player := _free_player()
 	player.stream = _sounds[sound_name]
-	player.pitch_scale = randf_range(1.0 - pitch_jitter, 1.0 + pitch_jitter)
+	player.pitch_scale = pitch * randf_range(1.0 - pitch_jitter, 1.0 + pitch_jitter)
 	player.play()
 
 

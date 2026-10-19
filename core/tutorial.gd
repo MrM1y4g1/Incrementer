@@ -4,7 +4,7 @@ extends RefCounted
 ##   count        a new game: press Increment
 ##   incrementer  the first Incrementer is affordable
 ##   upgrade      the first upgrade is affordable
-##   wear         the first bit starts to wear out
+##   wear         the first bit starts to wear out (nothing to do: it warns what's coming)
 ##   bad bit      the first bit goes bad
 ## Each step shows once per save; GameState.tutorial lists the steps already shown. The UI decides when it
 ## can show one (not over another screen) and pauses the game while it's open.
@@ -53,8 +53,6 @@ static func is_done(step: String, state: GameState) -> bool:
 			return state.layer_bought[0] > 0 or state.overflows > 0
 		"upgrade":
 			return not state.upgrades.is_empty() or state.overflows > 0
-		"wear":
-			return state.wearing.is_empty()
 		"bad bit":
 			return state.bad_bits.is_empty()
 	return true
