@@ -497,13 +497,26 @@ static func _wear_rng(state: GameState, purpose: String) -> RandomNumberGenerato
 	return rng
 
 
-## A worn bit goes bad. A new lowest bad bit starts its own wait to scrub itself.
+## A worn bit goes bad. If it held a 1 in the Count, the Count loses that bit's value: the storage that held
+## it is gone. A new lowest bad bit starts its own wait to scrub itself.
 static func _go_bad(state: GameState, bit: int) -> void:
+	var lost := 0.0
+	if is_bit_set(state.count, bit):
+		lost = pow(2.0, bit)
+		state.count = maxf(0.0, state.count - lost)
+		state.count_lost = minf(Formulas.MAX_FLOAT, state.count_lost + lost)
 	if state.bad_bits.is_empty() or bit < state.bad_bits[0]:
 		state.blocked_time = 0.0
 	state.bad_bits.append(bit)
 	state.bad_bits.sort()
-	state.record("bad bit", bit)
+	state.record("bad bit", {"bit": bit, "lost": lost})
+
+
+## True when `bit` is 1 in `value`. Bits below a large value's float precision always read 0.
+static func is_bit_set(value: float, bit: int) -> bool:
+	if value < 1.0:
+		return false
+	return fmod(floor(value / pow(2.0, bit)), 2.0) >= 1.0
 
 
 static func _clear_wear(state: GameState) -> void:

@@ -62,6 +62,7 @@ var _skip_title := false
 var _faults_cleared := -1
 var _bad_seen := -1
 var _wear_seen := -1
+var _lost_seen := -1.0
 var _was_blocked := false
 
 # The tutorial: the step whose card is open, the step whose hint is showing, and whether it's off
@@ -103,6 +104,7 @@ func _ready() -> void:
 	_faults_cleared = -1
 	_bad_seen = -1
 	_wear_seen = -1
+	_lost_seen = -1.0
 
 	var timer := Timer.new()
 	timer.wait_time = REFRESH_SECONDS
@@ -774,11 +776,17 @@ func _notice_faults(state: GameState, blocked: bool) -> void:
 		Audio.play("wear", 0.0)
 	if _faults_cleared >= 0 and cleared > _faults_cleared:
 		_register.flash(Color(Palette.CYAN, 0.5))
+	# A bit that held a 1 took its value with it: show what the Count lost.
+	if _lost_seen >= 0.0 and state.count_lost > _lost_seen:
+		var rect := _register.get_global_rect()
+		_fx.float_text(rect.get_center(), "-%s" % NumberFormat.amount(state.count_lost - _lost_seen), Palette.FAULT)
+		_register.flash(Color(Palette.FAULT, 0.35))
 	if _scrub_panel.visible and _scrub_panel.bit != Economy.next_fault(state):
 		_close_overlays()
 	_faults_cleared = cleared
 	_bad_seen = state.bad_bits.size()
 	_wear_seen = state.wear_started
+	_lost_seen = state.count_lost
 	_was_blocked = blocked
 
 
@@ -997,11 +1005,25 @@ func _tutorial_text(step: String, state: GameState, content: Content) -> Array[S
 			var bit := -1
 			for worn: int in state.wearing:
 				bit = worn
-			return ["A bit is wearing out", "The machine's storage is old. Bit %d has started to wear: it glows amber, turns red, and %d seconds later it goes bad.\n\nClick the bit, or press REFRESH under the register, to rewrite it in time. Bits wear out anywhere in the register, and more often as the machine ages." % [
+			return ["A bit is wearing out", "The machine's storage is old. Bit %d has started to wear: it glows amber, turns red, and %d seconds later it goes bad. If it holds a 1 then, the Count loses what that bit was worth.\n\nClick the bit, or press REFRESH under the register, to rewrite it in time. Bits wear out anywhere in the register, and more often as the machine ages." % [
 				bit, roundi(Formulas.WEAR_SECONDS)]]
 		"bad bit":
-			return ["A bit has gone bad", "Bit %d went bad before it was refreshed. The Count can't grow past a bad bit: it stops just below it, or if it's already higher, it stops growing.\n\nREPAIR the bit with Count, SCRUB it for free by solving a small parity puzzle, or wait: %d seconds after it starts holding the Count, it scrubs itself." % [
-				Economy.next_fault(state), roundi(state.scrub_seconds)]]
+			var fault := Economy.next_fault(state)
+			var lost := ""
+			# The run log says whether the bit held a 1 when it went bad.
+			for k: int in range(state.events.size() - 1, -1, -1):
+				var event: Array = state.events[k]
+				if event[1] != "bad bit" or not event[2] is Dictionary:
+					continue
+				var detail: Dictionary = event[2]
+				if int(detail.get("bit", -1)) != fault:
+					continue
+				var amount := float(detail.get("lost", 0.0))
+				if amount > 0.0:
+					lost = " It held a 1, so the Count lost %s." % NumberFormat.amount(amount)
+				break
+			return ["A bit has gone bad", "Bit %d went bad before it was refreshed.%s The Count can't grow past a bad bit: it stops just below it, or if it's already higher, it stops growing.\n\nREPAIR the bit with Count, SCRUB it for free by solving a parity puzzle, or wait: %d seconds after it starts holding the Count, it scrubs itself." % [
+				fault, lost, roundi(state.scrub_seconds)]]
 	return ["", ""]
 
 

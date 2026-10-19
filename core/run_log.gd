@@ -17,7 +17,7 @@ extends RefCounted
 ##   autobuy      an autobuyer switch; detail is "<switch> on" or "<switch> off"
 ##   setting      a switch that changes play; detail is "bad bits on" or "bad bits off"
 ##   refresh      a worn bit refreshed before it went bad; detail is {"bit": bit, "after": seconds worn}
-##   bad bit      a worn bit went bad; detail is the bit
+##   bad bit      a worn bit went bad; detail is {"bit": bit, "lost": Count lost because the bit held a 1}
 ##   blocked      the lowest bad bit started holding the Count; detail is the bit
 ##   repair       a bad bit repaired with Count; detail is the bit
 ##   scrub        a bad bit scrubbed by solving its puzzle; detail is the bit

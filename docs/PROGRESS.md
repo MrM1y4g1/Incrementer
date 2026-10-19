@@ -10,6 +10,7 @@ Newest first. Screenshots are captured from the real game at 1280 × 720. The `-
 - scrub puzzles that grow the further you get, so you have to flip several bits
 - worn bits that go bad after 20 seconds rather than 90
 - no protection for players who look away: bad bits may pile up
+- a bit that goes bad takes its value out of the Count if it held a 1
 
 **The tutorial.** The first time each of five things happens, the game pauses: nothing is produced, nothing wears, and the play clock stops. The screen dims except for the part being explained, which gets an amber frame, and a card beside it explains what to do. After **Got it** the frame keeps pulsing on that part until you've done it. **Skip tutorial** turns the rest off. The buttons wait 0.8 seconds before they work, so someone clicking fast doesn't skip a card unread. Saves from before 1.4.0 skip the first three steps but still get the two about worn bits.
 
@@ -19,7 +20,7 @@ Newest first. Screenshots are captured from the real game at 1280 × 720. The `-
 
 **Worn bits.** From 16 bits on, every couple of minutes a random bit starts to wear, anywhere in the register. It glows amber, reddens and flickers faster, and after 20 seconds it goes bad. Click it, or press **Refresh** under the register, to save it. On wide registers the cells are tiny, so a click lands on the nearest worn bit within a cell's reach, and in a single row the worn bits get markers above and below. Bits wear more often after each Overflow, up to three times as often; Spare rows halve that.
 
-A bad bit below the Count now stops it growing. Until now bad bits only appeared above the Count.
+A bad bit below the Count now stops it growing. Until now bad bits only appeared above the Count. And if the bit held a 1 when it went bad, the Count loses that bit's value: a red "-N" rises from the register, which flashes red, and Stats keep a running total. Losing the Count's top bit drops it below the bad bit, so it can grow back up to just under it.
 
 ![The first worn bit](screenshots/2026-10-19-v140-03-tutorial-wear.png)
 
@@ -35,7 +36,7 @@ A bad bit below the Count now stops it growing. Until now bad bits only appeared
 
 ![A 1024-bit puzzle: four flips](screenshots/2026-10-19-v140-08-scrub-1024-bit.png)
 
-**Pacing:** in the simulator about 20 bits wear out per run, roughly one every two minutes, 197 over the whole game. A player who refreshes them within 10 seconds keeps the old pace: first Overflow at 49 min, ending at 6 h 14 min. A player who never refreshes falls behind, and from the fourth run, with a 32-bit Boot ROM, bad bits arrive faster than they scrub themselves and hold the Count for hours. That's intended, so the pacing check prints this player but no longer fails on it. A player who comes back can still clear the pile by repairing or scrubbing the bits one by one.
+**Pacing:** in the simulator about 20 bits wear out per run, roughly one every two minutes, 197 over the whole game. A player who refreshes them within 10 seconds keeps the old pace: first Overflow at 49 min, ending at 6 h 14 min. A player who never refreshes loses Count and time to every bad bit, and finishes at about 6 h 28 min. Before bad bits took their value, that same player got stuck: from the fourth run, in a 32-bit register, bad bits arrived faster than they scrubbed themselves and held the Count for hours. Now a lost top bit drops the Count below the bad bit, so it can grow again. You said piling up is fine, so the pacing check prints this player but no longer fails on it. A player who comes back to a pile can clear it by repairing or scrubbing the bits one by one.
 
 **Browser check:** with worn bits flickering, the register redraws every frame, so I counted WebGL buffers in a localhost copy. The register now draws only rectangles and one texture, and adds none. The 16 to 24 buffers a second that remain come from elsewhere on the screen, most likely the buttons whose text changes ten times a second, and every one is deleted again. With a tutorial card open, nothing is created at all, because the game is paused.
 

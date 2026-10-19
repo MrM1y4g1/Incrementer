@@ -137,7 +137,8 @@ func test_bits_start_wearing_anywhere_in_the_register() -> void:
 	for event: Array in s.events:
 		if event[1] != "bad bit":
 			continue
-		var bit := int(event[2])
+		var detail: Dictionary = event[2]
+		var bit := int(detail["bit"])
 		check(bit >= 0 and bit < 64, "bit %d is in the register" % bit)
 		if bit < 16:
 			low += 1
@@ -167,6 +168,47 @@ func test_a_worn_bit_goes_bad_after_wearing_for_its_time() -> void:
 	Economy.advance(s, content, Formulas.WEAR_SECONDS / 2.0)
 	check(not s.wearing.has(5), "no longer wearing")
 	check_eq(s.bad_bits, [5], "it went bad")
+	check_eq(s.count_lost, 0.0, "it held a 0, so nothing was lost")
+
+
+func test_a_bit_that_goes_bad_holding_a_1_takes_its_value() -> void:
+	var content := Fixtures.content()
+	var s := GameState.new()
+	s.register_bits = 16
+	s.wear_due = 10000.0
+	s.count = 1000.0
+	# 1000 is 1111101000 in binary: bit 5 is 1, bit 4 is 0.
+	s.wearing[5] = Formulas.WEAR_SECONDS - 1.0
+	s.wearing[4] = Formulas.WEAR_SECONDS - 1.0
+	Economy.advance(s, content, 1.0)
+	check_eq(s.bad_bits, [4, 5])
+	check_eq(s.count, 968.0, "bit 5 took its 32 with it")
+	check_eq(s.count_lost, 32.0)
+	var logged := {}
+	for event: Array in s.events:
+		if event[1] == "bad bit":
+			logged[int(event[2]["bit"])] = float(event[2]["lost"])
+	check_eq(logged, {4: 0.0, 5: 32.0}, "the run log says what each bit lost")
+
+
+func test_losing_the_top_bit_drops_the_count_below_it() -> void:
+	var content := Fixtures.content()
+	var s := GameState.new()
+	s.register_bits = 16
+	s.wear_due = 10000.0
+	s.count = 1000.0
+	s.wearing[9] = Formulas.WEAR_SECONDS
+	Economy.advance(s, content, 0.01)
+	check_eq(s.count, 488.0, "1000 - 512")
+	check(not Economy.is_blocked(s), "below the bad bit, so it can grow again")
+	Economy.add_count(s, 1000.0)
+	check_eq(s.count, 511.0, "up to just under bit 9")
+
+
+func test_is_bit_set() -> void:
+	check(Economy.is_bit_set(5.0, 0) and not Economy.is_bit_set(5.0, 1) and Economy.is_bit_set(5.0, 2), "5 is 101")
+	check(not Economy.is_bit_set(pow(2.0, 80), 3), "bits below a large value's precision read 0")
+	check(Economy.is_bit_set(Formulas.MAX_FLOAT, 1023), "the top bit of the largest float")
 
 
 func test_refreshing_saves_a_worn_bit() -> void:

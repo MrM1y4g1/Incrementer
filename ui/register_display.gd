@@ -138,7 +138,7 @@ func _draw_bit(rect: Rect2, bit: int, magnitude: int, exact_from: int, tick: int
 	elif bit > magnitude:
 		color = Color(0, 0, 0, 0)
 	elif bit >= exact_from:
-		color = Palette.CYAN if _is_set(_value, bit) else Color(Palette.CYAN, 0.08)
+		color = Palette.CYAN if Economy.is_bit_set(_value, bit) else Color(Palette.CYAN, 0.08)
 	else:
 		# Below float precision: a gentle shimmer instead of fake digits.
 		var noise := float(((bit * 7919 + tick * 104729) % 97)) / 97.0
@@ -215,9 +215,3 @@ static func _make_cross() -> Texture2D:
 			var distance := minf(absf(px - py), absf(px + py - side)) / sqrt(2.0)
 			image.set_pixel(x, y, Color(1, 1, 1, clampf(2.2 - distance, 0.0, 1.0)))
 	return ImageTexture.create_from_image(image)
-
-
-static func _is_set(value: float, bit: int) -> bool:
-	if value < 1.0:
-		return false
-	return fmod(floor(value / pow(2.0, bit)), 2.0) >= 1.0

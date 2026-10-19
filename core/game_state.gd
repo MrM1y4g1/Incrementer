@@ -60,6 +60,8 @@ var faults_scrubbed := 0
 var faults_waited := 0
 ## Worn bits the player refreshed before they went bad, over the whole save.
 var faults_refreshed := 0
+## Count lost over the whole save to bits that went bad while they held a 1.
+var count_lost := 0.0
 ## Tutorial steps already shown (see Tutorial).
 var tutorial: Array[String] = []
 ## The run log, oldest first: [play seconds, kind, detail]. See RunLog for the kinds.
@@ -134,6 +136,7 @@ func to_dict() -> Dictionary:
 		"faults_scrubbed": faults_scrubbed,
 		"faults_waited": faults_waited,
 		"faults_refreshed": faults_refreshed,
+		"count_lost": count_lost,
 		"tutorial": tutorial.duplicate(),
 		"events": events.duplicate(true),
 	}
@@ -165,6 +168,7 @@ static func from_dict(data: Dictionary) -> GameState:
 	s.faults_scrubbed = maxi(0, int(data.get("faults_scrubbed", 0)))
 	s.faults_waited = maxi(0, int(data.get("faults_waited", 0)))
 	s.faults_refreshed = maxi(0, int(data.get("faults_refreshed", 0)))
+	s.count_lost = clampf(float(data.get("count_lost", 0.0)), 0.0, Formulas.MAX_FLOAT)
 	s.wear_due = maxf(-1.0, float(data.get("wear_due", -1.0)))
 	s.wear_started = maxi(0, int(data.get("wear_started", 0)))
 	var saved_bad_bits: Variant = data.get("bad_bits", [])

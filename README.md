@@ -23,7 +23,7 @@ Click the register or press **Space** to increment. The `windows-debug` build ad
 
 **Start over** (Save data, or New game on the start screen) erases the game but first writes it to `save-before-start-over.json` in the save folder; rename that to `save.json`, with the game closed, to get it back.
 
-**Worn and bad bits:** the register's storage wears out as you play. A worn bit glows amber, then red, and goes bad after 20 seconds unless you click it or press **Refresh**. A bad bit stops the Count until you **Repair** it (half the bit's value in Count), **Scrub** it (solve a parity puzzle that grows with the register, free) or wait a minute. They can be switched off in Settings.
+**Worn and bad bits:** the register's storage wears out as you play. A worn bit glows amber, then red, and goes bad after 20 seconds unless you click it or press **Refresh**. If it held a 1, the Count loses that bit's value. A bad bit stops the Count until you **Repair** it (half the bit's value in Count), **Scrub** it (solve a parity puzzle that grows with the register, free) or wait a minute. They can be switched off in Settings.
 
 **Tutorial:** the first time something new happens, the game pauses and explains it. **Skip tutorial** turns it off for that save.
 

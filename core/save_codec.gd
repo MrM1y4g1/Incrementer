@@ -9,7 +9,7 @@ extends RefCounted
 ##   3  M3: adds the run fields, Carry, Firmware, Overflows, run history, autobuyer switches and the ending
 ##   4  1.1.0: adds the run log (events)
 ##   5  1.2.0: adds bad bits (run seed, bad bits, blocked time, the switch and the counts)
-##   6  1.4.0: adds worn bits (wearing, wear due, wear started, refreshed count) and the tutorial
+##   6  1.4.0: adds worn bits (wearing, wear due, wear started, refreshed count, Count lost) and the tutorial
 
 const VERSION := 6
 
@@ -134,6 +134,7 @@ static func _v5_to_v6(payload: Dictionary) -> Dictionary:
 	state["wear_due"] = -1.0
 	state["wear_started"] = 0
 	state["faults_refreshed"] = 0
+	state["count_lost"] = 0.0
 	# Someone who has already played knows how to count, buy and upgrade. Worn bits are new to everyone,
 	# so their tutorial steps still show.
 	var played := int(state.get("total_clicks", 0)) > 0 or float(state.get("total_produced", 0.0)) > 0.0 or int(state.get("overflows", 0)) > 0
